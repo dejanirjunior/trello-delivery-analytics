@@ -1,0 +1,6 @@
+card_id,titulo,cliente,status_kanban,bloqueado,priority,risk,effort,data_de_entrega,last_activity,tipo
+1,Integração ERP,Cliente Alpha,Doing,False,High,Medium,13,2026-05-01,2026-04-18,GERAL
+2,Dashboard Comercial,Cliente Beta,To Do,False,Medium,Low,8,2026-05-10,2026-04-17,GERAL
+3,Correção API Financeira,Cliente Alpha,Doing,True,High,High,5,2026-04-25,2026-04-18,BLOCK
+4,Implantação CRM,Cliente Gamma,Done,False,High,Low,21,2026-04-15,2026-04-15,GERAL
+5,Automação Relatórios,Cliente Beta,Doing,False,Low,Low,3,2026-05-03,2026-04-16,GERAL
