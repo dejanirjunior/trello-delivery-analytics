@@ -42,7 +42,9 @@ def build_card_record(row):
         "priority": safe_value(row.get("priority"), "Sem prioridade"),
         "risk": safe_value(row.get("risk"), "Sem risco"),
         "effort": None if pd.isna(row.get("effort")) else row.get("effort"),
-        "delivery_date": format_date(row.get("data_de_entrega")),
+        "executed_hours": None if pd.isna(row.get("total_horas_executado")) else row.get("total_horas_executado"),
+        "commitment_date": format_date(row.get("data_compromisso")),
+        "trello_due_date": format_date(row.get("due_date")),
         "last_activity": format_date(row.get("last_activity")),
         "tipo": safe_value(row.get("tipo"), "GERAL"),
     }
@@ -68,11 +70,7 @@ def build_html(data_json, cliente_nome):
     --block: #c0392b;
   }}
 
-  * {{
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
   body {{
     font-family: 'Segoe UI', Arial, sans-serif;
@@ -92,17 +90,6 @@ def build_html(data_json, cliente_nome):
     position: sticky;
     top: 0;
     z-index: 100;
-  }}
-
-  header h1 {{
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: .5px;
-  }}
-
-  header span {{
-    font-size: .85rem;
-    opacity: .8;
   }}
 
   .badge-row {{
@@ -166,10 +153,6 @@ def build_html(data_json, cliente_nome):
     cursor: pointer;
   }}
 
-  .filters button:hover {{
-    background: #eee;
-  }}
-
   .board {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -191,22 +174,6 @@ def build_html(data_json, cliente_nome):
     align-items: center;
     justify-content: space-between;
     border-bottom: 2px solid;
-  }}
-
-  .col-header h2 {{
-    font-size: .9rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }}
-
-  .col-count {{
-    background: rgba(0,0,0,.08);
-    border-radius: 12px;
-    padding: 2px 10px;
-    font-size: .78rem;
-    font-weight: 700;
   }}
 
   .col-done .col-header {{
@@ -242,18 +209,11 @@ def build_html(data_json, cliente_nome):
     background: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
     cursor: pointer;
-    transition: box-shadow .15s, transform .1s;
-  }}
-
-  .card:hover {{
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
-    transform: translateY(-1px);
   }}
 
   .card-id {{
     font-size: .68rem;
     font-weight: 700;
-    letter-spacing: .4px;
     margin-bottom: 5px;
     font-family: monospace;
     color: #666;
@@ -336,28 +296,9 @@ def build_html(data_json, cliente_nome):
     color: #888;
   }}
 
-  .modal-id {{
-    font-size: .75rem;
-    font-weight: 700;
-    font-family: monospace;
-    margin-bottom: 8px;
-  }}
-
-  .modal-title {{
-    font-size: 1rem;
-    font-weight: 700;
-    color: #1b3a6b;
-    line-height: 1.5;
-    margin-bottom: 14px;
-  }}
-
   .modal-row {{
     font-size: .85rem;
     margin-bottom: 8px;
-  }}
-
-  .modal-row strong {{
-    color: #555;
   }}
 
   @media (max-width: 900px) {{
@@ -512,8 +453,8 @@ function clearFilters() {{
 
 function openModal(item) {{
   document.getElementById('modal-content').innerHTML = `
-    <div class="modal-id">${{item.id}}</div>
-    <div class="modal-title">${{item.title}}</div>
+    <div class="modal-row"><strong>ID:</strong> ${{item.id}}</div>
+    <div class="modal-row"><strong>Demanda:</strong> ${{item.title}}</div>
     <div class="modal-row"><strong>Status:</strong> ${{item.status}}</div>
     <div class="modal-row"><strong>Cliente:</strong> ${{item.cliente || 'Sem cliente'}}</div>
     <div class="modal-row"><strong>Tipo:</strong> ${{item.tipo || 'GERAL'}}</div>
@@ -521,7 +462,9 @@ function openModal(item) {{
     <div class="modal-row"><strong>Prioridade:</strong> ${{item.priority || 'Sem prioridade'}}</div>
     <div class="modal-row"><strong>Risco:</strong> ${{item.risk || 'Sem risco'}}</div>
     <div class="modal-row"><strong>Effort:</strong> ${{item.effort ?? 'Não informado'}}</div>
-    <div class="modal-row"><strong>Data de entrega:</strong> ${{item.delivery_date || 'Não informada'}}</div>
+    <div class="modal-row"><strong>Total Horas Executado:</strong> ${{item.executed_hours ?? 'Não informado'}}</div>
+    <div class="modal-row"><strong>Data Compromisso:</strong> ${{item.commitment_date || 'Não informada'}}</div>
+    <div class="modal-row"><strong>Prazo Trello:</strong> ${{item.trello_due_date || 'Não informado'}}</div>
     <div class="modal-row"><strong>Última atualização:</strong> ${{item.last_activity || 'Não informada'}}</div>
   `;
   document.getElementById('modal-overlay').classList.add('open');
@@ -581,4 +524,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

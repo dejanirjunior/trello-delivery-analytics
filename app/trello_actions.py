@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 import pandas as pd
 import requests
 from dotenv import load_dotenv
@@ -8,20 +9,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 TRELLO_KEY = os.getenv("TRELLO_KEY")
 TRELLO_TOKEN = os.getenv("TRELLO_TOKEN")
+TRELLO_BOARD_ID = os.getenv("TRELLO_BOARD_ID")
 BASE_URL = "https://api.trello.com/1"
 
 
 class TrelloAPIError(Exception):
-    """Erro customizado para problemas na API do Trello."""
+    pass
 
 
 def _validate_credentials():
     if not TRELLO_KEY or not TRELLO_TOKEN:
         raise TrelloAPIError("TRELLO_KEY ou TRELLO_TOKEN não encontrados no .env")
+
+    if not TRELLO_BOARD_ID:
+        raise TrelloAPIError("TRELLO_BOARD_ID não encontrado no .env")
 
 
 def _get(endpoint, params=None):
@@ -51,10 +56,6 @@ def _get(endpoint, params=None):
         ) from exc
 
 
-def get_my_boards():
-    return _get("/members/me/boards", params={"fields": "id,name"})
-
-
 def get_actions(board_id, limit=1000):
     return _get(
         f"/boards/{board_id}/actions",
@@ -66,11 +67,7 @@ def get_actions(board_id, limit=1000):
 
 
 def main():
-    board_id = os.getenv("TRELLO_BOARD_ID")
-
-    if not board_id:
-        print("TRELLO_BOARD_ID não encontrado no .env")
-        return
+    board_id = TRELLO_BOARD_ID
 
     print(f"Usando board ID: {board_id}")
     print("Buscando movimentações de listas...")
@@ -106,5 +103,8 @@ def main():
         print("\nPrévia:")
         print(df.head())
 
+
+if __name__ == "__main__":
+    main()
 
 

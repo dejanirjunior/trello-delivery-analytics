@@ -1,20 +1,20 @@
 import os
 import json
 from pathlib import Path
-from datetime import datetime
 
-import requests
 import pandas as pd
+import requests
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 TRELLO_KEY = os.getenv("TRELLO_KEY")
 TRELLO_TOKEN = os.getenv("TRELLO_TOKEN")
+TRELLO_BOARD_ID = os.getenv("TRELLO_BOARD_ID")
 TRELLO_BASE_URL = "https://api.trello.com/1"
 
 
@@ -24,7 +24,10 @@ class TrelloAPIError(Exception):
 
 def _validate_credentials() -> None:
     if not TRELLO_KEY or not TRELLO_TOKEN:
-        raise TrelloAPIError("TRELLO_KEY ou TRELLO_TOKEN não encontrados no arquivo .env")
+        raise TrelloAPIError("TRELLO_KEY ou TRELLO_TOKEN não encontrados no .env")
+
+    if not TRELLO_BOARD_ID:
+        raise TrelloAPIError("TRELLO_BOARD_ID não encontrado no .env")
 
 
 def _get(endpoint: str, params: dict | None = None):
@@ -66,12 +69,16 @@ def normalize_field_name(name: str) -> str:
         .replace("/", "_")
         .replace("(", "")
         .replace(")", "")
+        .replace(".", "")
+        .replace("ç", "c")
+        .replace("ã", "a")
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
     )
     return normalized
-
-
-def get_my_boards():
-    return _get("/members/me/boards", params={"fields": "id,name"})
 
 
 def get_lists(board_id):
@@ -86,8 +93,10 @@ def get_cards_from_board(board_id):
     return _get(
         f"/boards/{board_id}/cards",
         params={
-            "fields": "id,name,idList,labels,dateLastActivity,due,start,closed",
+            "fields": "id,name,idList,labels,dateLastActivity,due,start,closed,idMembers,date",
             "customFieldItems": "true",
+            "members": "true",
+            "member_fields": "fullName,username",
         },
     )
 
@@ -97,10 +106,6 @@ def build_list_map(lists_data: list[dict]) -> dict:
 
 
 def build_custom_field_map(custom_fields: list[dict]) -> dict:
-    """
-    Mapeia:
-    field_id -> metadados do campo
-    """
     field_map = {}
 
     for field in custom_fields:
@@ -119,9 +124,6 @@ def build_custom_field_map(custom_fields: list[dict]) -> dict:
 
 
 def extract_custom_field_value(item: dict, field_meta: dict):
-    """
-    Converte o valor bruto do Trello para algo usável.
-    """
     field_type = field_meta["type"]
     value = item.get("value", {})
 
@@ -158,6 +160,10 @@ def process_cards(cards: list[dict], list_map: dict, custom_field_map: dict) -> 
 
     for card in cards:
         labels = [label["name"] for label in card.get("labels", []) if label.get("name")]
+        labels_upper = [lbl.upper() for lbl in labels]
+
+        members = card.get("members", [])
+        member_names = [m.get("fullName") for m in members if m.get("fullName")]
 
         row = {
             "card_id": card["id"],
@@ -165,21 +171,23 @@ def process_cards(cards: list[dict], list_map: dict, custom_field_map: dict) -> 
             "lista": list_map.get(card["idList"], "N/A"),
             "labels": ", ".join(labels),
             "last_activity": card.get("dateLastActivity"),
-            "due_date": card.get("due"),
+            "created_date": card.get("date"),
+            "due_date": card.get("due"),   # prazo nativo do Trello
             "start_date": card.get("start"),
             "closed": card.get("closed"),
+            "assigned_members": ", ".join(member_names),
+            "member_count": len(member_names),
         }
 
-        # Extrair labels estratégicos
-        row["is_block"] = "BLOCK" in labels
-        row["is_bug"] = "BUG" in labels
+        row["is_block"] = "BLOCK" in labels_upper
+        row["is_bug"] = "BUG" in labels_upper
+        row["is_feature"] = "FEATURE" in labels_upper
+        row["is_debito_tecnico"] = "DEBITOTECNICO" in labels_upper
 
-        # Cliente: considera o primeiro label que não seja técnico
-        technical_labels = {"BLOCK", "BUG"}
-        business_labels = [lbl for lbl in labels if lbl not in technical_labels]
+        technical_labels = {"BLOCK", "BUG", "FEATURE", "DEBITOTECNICO"}
+        business_labels = [lbl for lbl in labels if lbl.upper() not in technical_labels]
         row["cliente_label"] = business_labels[0] if business_labels else None
 
-        # Custom fields
         for item in card.get("customFieldItems", []):
             field_id = item.get("idCustomField")
             field_meta = custom_field_map.get(field_id)
@@ -206,7 +214,7 @@ def print_custom_fields_summary(custom_fields: list[dict]) -> None:
 
 
 def main():
-    board_id = os.getenv("TRELLO_BOARD_ID")
+    board_id = TRELLO_BOARD_ID
 
     if not board_id:
         print("TRELLO_BOARD_ID não encontrado no .env")
@@ -247,3 +255,5 @@ def main():
     print(list(df.columns))
 
 
+if __name__ == "__main__":
+    main()

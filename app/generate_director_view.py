@@ -27,6 +27,8 @@ def format_date(value):
 
 def build_record(row):
     effort = pd.to_numeric(pd.Series([row.get("effort")]), errors="coerce").iloc[0]
+    executed = pd.to_numeric(pd.Series([row.get("total_horas_executado")]), errors="coerce").iloc[0]
+
     return {
         "id": safe_value(row.get("card_id")),
         "titulo": safe_value(row.get("titulo")),
@@ -36,7 +38,9 @@ def build_record(row):
         "priority": safe_value(row.get("priority"), "Sem prioridade"),
         "risk": safe_value(row.get("risk"), "Sem risco"),
         "effort": None if pd.isna(effort) else float(effort),
-        "data_entrega": format_date(row.get("data_de_entrega")),
+        "executed_hours": None if pd.isna(executed) else float(executed),
+        "commitment_date": format_date(row.get("data_compromisso")),
+        "trello_due_date": format_date(row.get("due_date")),
         "last_activity": format_date(row.get("last_activity")),
         "tipo": safe_value(row.get("tipo"), "GERAL"),
     }
@@ -71,8 +75,8 @@ def main():
       --primary-2: #285ea8;
       --border: #e5e7eb;
       --success: #15803d;
-      --warning: #b45309;
       --danger: #b42318;
+      --warning: #b45309;
       --shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
       --radius: 16px;
     }}
@@ -363,12 +367,12 @@ def main():
         <div class="kpi-value" id="kpi-effort">0</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label" id="kpi-blocked-label">Bloqueadas</div>
-        <div class="kpi-value" id="kpi-blocked">0</div>
+        <div class="kpi-label" id="kpi-executed-label">Horas executadas</div>
+        <div class="kpi-value" id="kpi-executed">0</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label" id="kpi-done-label">Concluídas</div>
-        <div class="kpi-value" id="kpi-done">0</div>
+        <div class="kpi-label" id="kpi-blocked-label">Bloqueadas</div>
+        <div class="kpi-value" id="kpi-blocked">0</div>
       </div>
     </section>
 
@@ -406,6 +410,9 @@ def main():
             <th id="th-priority">Prioridade</th>
             <th id="th-risk">Risco</th>
             <th id="th-effort">Effort</th>
+            <th id="th-executed">Horas Executadas</th>
+            <th id="th-commitment">Data Compromisso</th>
+            <th id="th-due">Prazo Trello</th>
           </tr>
         </thead>
         <tbody id="table-body"></tbody>
@@ -430,8 +437,8 @@ def main():
         all: "Todos",
         kpi_total: "Total de demandas",
         kpi_effort: "Effort total",
+        kpi_executed: "Horas executadas",
         kpi_blocked: "Bloqueadas",
-        kpi_done: "Concluídas",
         chart_client: "Demandas por cliente",
         chart_status: "Status das demandas",
         chart_priority: "Prioridade",
@@ -444,6 +451,9 @@ def main():
         th_priority: "Prioridade",
         th_risk: "Risco",
         th_effort: "Effort",
+        th_executed: "Horas Executadas",
+        th_commitment: "Data Compromisso",
+        th_due: "Prazo Trello",
         yes: "Sim",
         no: "Não",
         labels_status: {{
@@ -464,8 +474,8 @@ def main():
         all: "Todos",
         kpi_total: "Total de demandas",
         kpi_effort: "Esfuerzo total",
+        kpi_executed: "Horas ejecutadas",
         kpi_blocked: "Bloqueadas",
-        kpi_done: "Completadas",
         chart_client: "Demandas por cliente",
         chart_status: "Estado de las demandas",
         chart_priority: "Prioridad",
@@ -478,6 +488,9 @@ def main():
         th_priority: "Prioridad",
         th_risk: "Riesgo",
         th_effort: "Esfuerzo",
+        th_executed: "Horas ejecutadas",
+        th_commitment: "Fecha compromiso",
+        th_due: "Plazo Trello",
         yes: "Sí",
         no: "No",
         labels_status: {{
@@ -553,8 +566,8 @@ def main():
 
       document.getElementById("kpi-total-label").innerText = t.kpi_total;
       document.getElementById("kpi-effort-label").innerText = t.kpi_effort;
+      document.getElementById("kpi-executed-label").innerText = t.kpi_executed;
       document.getElementById("kpi-blocked-label").innerText = t.kpi_blocked;
-      document.getElementById("kpi-done-label").innerText = t.kpi_done;
 
       document.getElementById("chart-client-title").innerText = t.chart_client;
       document.getElementById("chart-status-title").innerText = t.chart_status;
@@ -569,6 +582,9 @@ def main():
       document.getElementById("th-priority").innerText = t.th_priority;
       document.getElementById("th-risk").innerText = t.th_risk;
       document.getElementById("th-effort").innerText = t.th_effort;
+      document.getElementById("th-executed").innerText = t.th_executed;
+      document.getElementById("th-commitment").innerText = t.th_commitment;
+      document.getElementById("th-due").innerText = t.th_due;
 
       filterClient.options[0].text = t.all;
       filterStatus.options[0].text = t.all;
@@ -582,13 +598,13 @@ def main():
     function updateKPIs(data) {{
       const total = data.length;
       const effort = data.reduce((acc, item) => acc + (item.effort || 0), 0);
+      const executed = data.reduce((acc, item) => acc + (item.executed_hours || 0), 0);
       const blocked = data.filter(item => item.bloqueado).length;
-      const done = data.filter(item => item.status === 'Done').length;
 
       document.getElementById('kpi-total').textContent = total;
       document.getElementById('kpi-effort').textContent = effort.toFixed(0);
+      document.getElementById('kpi-executed').textContent = executed.toFixed(0);
       document.getElementById('kpi-blocked').textContent = blocked;
-      document.getElementById('kpi-done').textContent = done;
     }}
 
     function updateCharts(data) {{
@@ -630,6 +646,9 @@ def main():
           <td>${{item.priority}}</td>
           <td>${{item.risk}}</td>
           <td>${{item.effort ?? ''}}</td>
+          <td>${{item.executed_hours ?? ''}}</td>
+          <td>${{item.commitment_date || ''}}</td>
+          <td>${{item.trello_due_date || ''}}</td>
         `;
         tbody.appendChild(tr);
       }});

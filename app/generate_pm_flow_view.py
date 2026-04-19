@@ -7,24 +7,60 @@ DATA_DIR = BASE_DIR / "data"
 
 LEADTIME = DATA_DIR / "lead_time_cards.csv"
 BACKLOG = DATA_DIR / "flow_backlog_refinado_weekly.csv"
+STAGE_TIMES = DATA_DIR / "stage_times.csv"
 
 OUTPUT = DATA_DIR / "pm_flow_view.html"
 
 
+def load_csv_or_empty(path: Path, columns: list[str]) -> pd.DataFrame:
+    if path.exists():
+        return pd.read_csv(path)
+    return pd.DataFrame(columns=columns)
+
+
+def build_stage_summary(df_stage: pd.DataFrame) -> pd.DataFrame:
+    if df_stage.empty:
+        return pd.DataFrame(columns=["stage", "avg_days"])
+
+    summary = (
+        df_stage.groupby("stage", dropna=False)["duration_days"]
+        .mean()
+        .reset_index(name="avg_days")
+    )
+
+    desired_order = ["Refinado", "Em dev", "Q.A.", "UAT", "Concluído", "Deploy PRD"]
+    summary["order"] = summary["stage"].apply(
+        lambda x: desired_order.index(x) if x in desired_order else 999
+    )
+    summary = summary.sort_values("order").drop(columns=["order"])
+    summary["avg_days"] = summary["avg_days"].round(2)
+    return summary
+
+
 def main():
-    df_lead = pd.read_csv(LEADTIME) if LEADTIME.exists() else pd.DataFrame(columns=["card_name", "lead_time_days"])
-    df_backlog = pd.read_csv(BACKLOG) if BACKLOG.exists() else pd.DataFrame(columns=["member", "week", "cards_puxados"])
+    df_lead = load_csv_or_empty(
+        LEADTIME,
+        ["card_id", "card_name", "start_refinado", "end_done", "lead_time_days"],
+    )
+    df_backlog = load_csv_or_empty(BACKLOG, ["member", "week", "cards_puxados"])
+    df_stage = load_csv_or_empty(
+        STAGE_TIMES,
+        ["card_id", "card_name", "stage", "entered_at", "left_at", "duration_days"],
+    )
 
     avg_lead = round(df_lead["lead_time_days"].mean(), 2) if not df_lead.empty else 0
     max_lead = round(df_lead["lead_time_days"].max(), 2) if not df_lead.empty else 0
     total_pulled = int(df_backlog["cards_puxados"].sum()) if not df_backlog.empty else 0
 
+    stage_summary = build_stage_summary(df_stage)
+
     data = {
         "lead": df_lead.to_dict(orient="records"),
         "backlog": df_backlog.to_dict(orient="records"),
+        "stage_summary": stage_summary.to_dict(orient="records"),
         "avg_lead": avg_lead,
         "max_lead": max_lead,
-        "total_pulled": total_pulled
+        "total_pulled": total_pulled,
     }
 
     html = f"""<!DOCTYPE html>
@@ -44,6 +80,9 @@ def main():
       --border: #e5e7eb;
       --shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
       --radius: 16px;
+      --blue: #285ea8;
+      --navy: #183a66;
+      --orange: #b45309;
     }}
 
     * {{ box-sizing: border-box; }}
@@ -174,7 +213,10 @@ def main():
     <div class="header-row">
       <div>
         <h1>📈 Visão de Flow - PM</h1>
-        <div class="subtitle">Indicadores de fluxo para gestão tática: lead time por card e puxada de backlog para refinado.</div>
+        <div class="subtitle">
+          Indicadores de fluxo para gestão tática: lead time por card, puxada de backlog para refinado
+          e duração média por etapa, incluindo UAT e Deploy PRD.
+        </div>
       </div>
       <div>
         <a class="btn" href="pm_view.html">⬅ Voltar para visão tática</a>
@@ -209,10 +251,25 @@ def main():
         <canvas id="backlog"></canvas>
       </div>
     </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Duração média por etapa (dias)</h2>
+        <canvas id="stages"></canvas>
+      </div>
+
+      <div class="panel">
+        <h2>Leitura tática</h2>
+        <p style="line-height:1.7; font-size:0.95rem;">
+          Esta visão apoia a gestão do fluxo com foco em tempo de atravessamento, entrada de demanda
+          e permanência média em cada etapa, incluindo validação interna, UAT do cliente e deploy em produção.
+        </p>
+      </div>
+    </section>
   </div>
 
   <script>
-    const data = {json.dumps(data)};
+    const data = {json.dumps(data, ensure_ascii=False)};
 
     new Chart(document.getElementById("lead"), {{
       type: "bar",
@@ -243,6 +300,24 @@ def main():
         }}]
       }},
       options: {{
+        plugins: {{
+          legend: {{ display: false }}
+        }}
+      }}
+    }});
+
+    new Chart(document.getElementById("stages"), {{
+      type: "bar",
+      data: {{
+        labels: data.stage_summary.map(x => x.stage),
+        datasets: [{{
+          label: "Dias médios",
+          data: data.stage_summary.map(x => x.avg_days),
+          backgroundColor: "#b45309"
+        }}]
+      }},
+      options: {{
+        responsive: true,
         plugins: {{
           legend: {{ display: false }}
         }}
