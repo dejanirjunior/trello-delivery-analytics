@@ -1,54 +1,101 @@
-# Trello Delivery Analytics Portal
+# 📊 Trello Analytics & Probabilistic Forecast
 
-Portal de acompanhamento de demandas construído a partir de dados estruturados do Trello.
+Dashboard completo para análise de delivery de times de desenvolvimento, com forecast probabilístico baseado em Monte Carlo.
 
-## O que o projeto entrega
+---
 
-- visão simplificada para cliente
-- dashboard executivo por cliente
-- visão tática para gerente de projetos
-- visão executiva interna para diretoria
-- métricas de fluxo a partir das movimentações dos cards
-- automação de atualização dos arquivos
+## 🚀 Visão Geral
 
-## Estrutura das visões
+Este projeto transforma dados de um board Trello em:
 
-### Cliente
-- portal do cliente
-- kanban simplificado
-- dashboard executivo do cliente
+- dashboards operacionais
+- métricas de fluxo (lead time, cycle time)
+- análises por cliente, tipo e prioridade
+- **forecast probabilístico (Monte Carlo)**
 
-### Gestão interna
-- visão do gerente de projetos
-- visão da diretoria
-- dashboards de flow
+O objetivo é apoiar decisões reais de entrega, capacidade e planejamento.
 
-## Tecnologias
-- Python
-- Pandas
-- Trello API
-- HTML
-- Chart.js
+---
 
-## Segurança dos dados
+## 🎯 Principais Funcionalidades
 
-Este repositório público **não contém dados reais de clientes**.
+### 📌 1. Visão do Gerente de Projetos
+- backlog completo
+- filtros por cliente, status e bloqueio
+- KPIs de esforço, horas executadas e volume
+- visão consolidada operacional
 
-Arquivos com dados reais gerados pelo projeto ficam fora do versionamento via `.gitignore`.
+---
 
-A pasta `demo/` contém apenas dados fictícios para demonstração.
+### 📈 2. Flow Analytics
+- lead time e cycle time
+- análise de fluxo de trabalho
+- identificação de gargalos
 
-## Demo
+---
 
-A pasta `demo/` contém uma demonstração pública com dados simulados.
+### 🎲 3. Probabilistic Forecast (Monte Carlo)
 
-## Como executar
+Simulação baseada em histórico real do time:
 
-1. Criar ambiente virtual
-2. Instalar dependências
-3. Configurar `.env`
-4. Rodar os scripts de geração
+- forecast por:
+  - cards
+  - story points
+  - effort
+- percentis:
+  - P50 (provável)
+  - P70/P85 (conservador)
+  - P95 (alta segurança)
 
-## Observação
+---
 
-Para uso real, é necessário configurar credenciais da API do Trello em arquivo `.env`, que não é versionado.
+### 🧠 4. Simulação de Cenários (What-if)
+
+Permite testar decisões antes de executá-las:
+
+- adicionar X cards ao backlog
+- definir tamanho médio (story point)
+- definir esforço médio
+- visualizar impacto no prazo
+
+---
+
+### 🔍 5. Filtros Inteligentes
+
+- por cliente
+- por tipo:
+  - Feature
+  - Bug
+  - Débito Técnico
+
+Permite análises como:
+- quanto tempo só bugs levam
+- impacto de um cliente específico
+- esforço por tipo de demanda
+
+---
+
+### 📊 6. Sumário Executivo Automático
+
+Interpretação automática do forecast:
+
+- leitura de risco
+- confiança do modelo
+- recomendação prática de uso dos percentis
+
+---
+
+## 🏗️ Arquitetura
+
+```text
+Trello API
+   ↓
+trello_api.py
+   ↓
+datasets (kanban / flow / forecast)
+   ↓
+Monte Carlo Simulation
+   ↓
+HTML dashboards (PM / Diretor / Forecast)
+   ↓
+Flask server (trigger de atualização)
