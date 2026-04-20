@@ -1,8 +1,6 @@
 import subprocess
 import sys
-from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 def run_step(description, command):
     print(f"\n=== {description} ===")
@@ -11,6 +9,7 @@ def run_step(description, command):
     if result.returncode != 0:
         print(f"Erro ao executar: {description}")
         sys.exit(1)
+
 
 def main():
     print("Iniciando pipeline Trello Analytics...")
@@ -65,10 +64,24 @@ def main():
         "python app/generate_pm_flow_view.py"
     )
 
+    run_step(
+        "11. Gerando dataset de forecast",
+        "python app/forecast_dataset.py"
+    )
+
+    run_step(
+        "12. Rodando Monte Carlo",
+        "python app/forecast_montecarlo.py"
+    )
+
+    run_step(
+        "13. Gerando visão Forecast PM",
+        "python app/generate_pm_forecast_view.py"
+    )
+
     print("\nPipeline concluído com sucesso!")
 
 
 if __name__ == "__main__":
     main()
-
 

@@ -28,6 +28,7 @@ def format_date(value):
 def build_record(row):
     effort = pd.to_numeric(pd.Series([row.get("effort")]), errors="coerce").iloc[0]
     executed = pd.to_numeric(pd.Series([row.get("total_horas_executado")]), errors="coerce").iloc[0]
+    story_point = pd.to_numeric(pd.Series([row.get("story_point")]), errors="coerce").iloc[0]
 
     return {
         "id": safe_value(row.get("card_id")),
@@ -37,6 +38,7 @@ def build_record(row):
         "bloqueado": bool(row.get("bloqueado")) if not pd.isna(row.get("bloqueado")) else False,
         "priority": safe_value(row.get("priority"), "Sem prioridade"),
         "risk": safe_value(row.get("risk"), "Sem risco"),
+        "story_point": None if pd.isna(story_point) else float(story_point),
         "effort": None if pd.isna(effort) else float(effort),
         "executed_hours": None if pd.isna(executed) else float(executed),
         "effort_preenchido": False if pd.isna(effort) else True,
@@ -67,10 +69,33 @@ def main():
   <title>Visão do Gerente de Projetos</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7fb; margin: 0; color: #1f2937; }}
-    header {{ background: linear-gradient(135deg, #183a66, #0f2744); color: white; padding: 24px 28px; }}
-    .header-row {{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; }}
-    .header-actions {{ display:flex; gap:10px; flex-wrap:wrap; }}
+    body {{
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      color: #1f2937;
+    }}
+
+    header {{
+      background: linear-gradient(135deg, #183a66, #0f2744);
+      color: white;
+      padding: 24px 28px;
+    }}
+
+    .header-row {{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:20px;
+      flex-wrap:wrap;
+    }}
+
+    .header-actions {{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }}
+
     .btn {{
       display:inline-flex;
       align-items:center;
@@ -83,36 +108,137 @@ def main():
       border:1px solid rgba(255,255,255,0.25);
       cursor:pointer;
       font: inherit;
-      min-width: 160px;
+      min-width: 170px;
     }}
+
+    .btn:hover {{
+      background: rgba(255,255,255,0.16);
+    }}
+
     .btn:disabled {{
       opacity: 0.7;
       cursor: not-allowed;
     }}
-    .container {{ padding: 24px 28px 40px; }}
-    .filters, .kpi, .panel, .table-panel {{ background:white; border-radius:16px; box-shadow:0 6px 18px rgba(17,24,39,0.08); }}
-    .filters {{ padding:16px; display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }}
-    .filters select, .filters input, .filters button {{ padding:9px 12px; border:1px solid #d1d5db; border-radius:10px; }}
-    .kpis {{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin-bottom:24px; }}
-    .kpi {{ padding:18px 20px; }}
-    .kpi-label {{ font-size:.79rem; color:#6b7280; margin-bottom:10px; font-weight:700; text-transform:uppercase; }}
-    .kpi-value {{ font-size:1.9rem; font-weight:700; }}
-    .grid {{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; margin-bottom:24px; }}
-    .panel {{ padding:18px 20px; }}
-    .panel h2, .table-panel h2 {{ margin:0 0 14px; font-size:1rem; color:#183a66; }}
-    .table-panel {{ padding:18px 20px; overflow-x:auto; }}
-    table {{ width:100%; border-collapse:collapse; font-size:.88rem; }}
-    thead {{ background:#eef2f7; }}
-    th, td {{ padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:left; }}
-    .tag {{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:.72rem; font-weight:700; }}
-    .tag-danger {{ background:#fdecea; color:#b42318; }}
-    .tag-ok {{ background:#e8f8ef; color:#15803d; }}
+
+    .container {{
+      padding: 24px 28px 40px;
+    }}
+
+    .filters, .kpi, .panel, .table-panel {{
+      background:white;
+      border-radius:16px;
+      box-shadow:0 6px 18px rgba(17,24,39,0.08);
+    }}
+
+    .filters {{
+      padding:16px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:20px;
+      align-items: center;
+    }}
+
+    .filters select,
+    .filters input,
+    .filters button {{
+      padding:9px 12px;
+      border:1px solid #d1d5db;
+      border-radius:10px;
+    }}
+
+    .kpis {{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+      gap:16px;
+      margin-bottom:24px;
+    }}
+
+    .kpi {{
+      padding:18px 20px;
+    }}
+
+    .kpi-label {{
+      font-size:.79rem;
+      color:#6b7280;
+      margin-bottom:10px;
+      font-weight:700;
+      text-transform:uppercase;
+    }}
+
+    .kpi-value {{
+      font-size:1.9rem;
+      font-weight:700;
+    }}
+
+    .grid {{
+      display:grid;
+      grid-template-columns:1.3fr 1fr;
+      gap:20px;
+      margin-bottom:24px;
+    }}
+
+    .panel {{
+      padding:18px 20px;
+    }}
+
+    .panel h2,
+    .table-panel h2 {{
+      margin:0 0 14px;
+      font-size:1rem;
+      color:#183a66;
+    }}
+
+    .table-panel {{
+      padding:18px 20px;
+      overflow-x:auto;
+    }}
+
+    table {{
+      width:100%;
+      border-collapse:collapse;
+      font-size:.88rem;
+    }}
+
+    thead {{
+      background:#eef2f7;
+    }}
+
+    th, td {{
+      padding:10px 12px;
+      border-bottom:1px solid #e5e7eb;
+      text-align:left;
+    }}
+
+    .tag {{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:.72rem;
+      font-weight:700;
+    }}
+
+    .tag-danger {{
+      background:#fdecea;
+      color:#b42318;
+    }}
+
+    .tag-ok {{
+      background:#e8f8ef;
+      color:#15803d;
+    }}
+
     #update-status {{
       margin-top: 10px;
       font-size: 0.9rem;
       opacity: 0.95;
     }}
-    @media (max-width: 960px) {{ .grid {{ grid-template-columns:1fr; }} }}
+
+    @media (max-width: 960px) {{
+      .grid {{
+        grid-template-columns:1fr;
+      }}
+    }}
   </style>
 </head>
 <body>
@@ -120,11 +246,13 @@ def main():
     <div class="header-row">
       <div>
         <h1>🧭 Visão do Gerente de Projetos</h1>
-        <div>Acompanhamento tático consolidado das demandas por cliente, status, bloqueio, esforço e horas executadas.</div>
+        <div>Acompanhamento tático consolidado das demandas por cliente, status, bloqueio, tamanho, esforço e horas executadas.</div>
         <div id="update-status"></div>
       </div>
+
       <div class="header-actions">
         <a class="btn" href="pm_flow_view.html">📈 Ver visão de flow</a>
+        <a class="btn" href="pm_forecast_view.html">🎲 Probabilistic Forecast</a>
         <button class="btn" id="update-btn" onclick="updateData()">🔄 Atualizar dados</button>
       </div>
     </div>
@@ -163,6 +291,10 @@ def main():
       <div class="kpi">
         <div class="kpi-label">Total de demandas</div>
         <div class="kpi-value" id="kpi-total">0</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Story Points totais</div>
+        <div class="kpi-value" id="kpi-story">0</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">Effort total</div>
@@ -211,6 +343,7 @@ def main():
             <th>Bloqueado</th>
             <th>Prioridade</th>
             <th>Risco</th>
+            <th>Story Point</th>
             <th>Effort</th>
             <th>Horas Executadas</th>
             <th>Data Compromisso</th>
@@ -274,11 +407,13 @@ def main():
 
     function updateKPIs(data) {{
       const total = data.length;
+      const story = data.reduce((acc, item) => acc + (item.story_point || 0), 0);
       const effort = data.reduce((acc, item) => acc + (item.effort || 0), 0);
       const executed = data.reduce((acc, item) => acc + (item.executed_hours || 0), 0);
       const blocked = data.filter(item => item.bloqueado).length;
 
       document.getElementById('kpi-total').textContent = total;
+      document.getElementById('kpi-story').textContent = story.toFixed(0);
       document.getElementById('kpi-effort').textContent = effort.toFixed(0);
       document.getElementById('kpi-executed').textContent = executed.toFixed(0);
       document.getElementById('kpi-blocked').textContent = blocked;
@@ -320,6 +455,7 @@ def main():
           <td>${{item.bloqueado ? '<span class="tag tag-danger">Sim</span>' : '<span class="tag tag-ok">Não</span>'}}</td>
           <td>${{item.priority}}</td>
           <td>${{item.risk}}</td>
+          <td>${{item.story_point ?? ''}}</td>
           <td>${{item.effort ?? ''}}</td>
           <td>${{item.executed_hours ?? ''}}</td>
           <td>${{item.data_compromisso || ''}}</td>
@@ -368,6 +504,9 @@ def main():
         const data = await response.json();
 
         if (data.status === "success") {{
+          if (data.warnings) {{
+            console.warn("Warnings do backend:", data.warnings);
+          }}
           statusBox.innerText = "Atualização concluída com sucesso. Recarregando a página...";
           setTimeout(() => {{
             window.location.reload();
@@ -411,5 +550,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
