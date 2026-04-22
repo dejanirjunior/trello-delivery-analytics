@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 import subprocess
 from pathlib import Path
@@ -28,11 +28,10 @@ def health():
 @app.route("/update", methods=["POST"])
 def update():
     try:
-        python_executable = str(BASE_DIR / "venv" / "bin" / "python")
         main_script = str(BASE_DIR / "app" / "main.py")
 
         result = subprocess.run(
-            [python_executable, main_script],
+            ["python3", main_script],
             capture_output=True,
             text=True,
             cwd=str(BASE_DIR)
@@ -52,6 +51,18 @@ def update():
             "status": "error",
             "error": str(e)
         }), 500
+
+
+@app.route("/views/<path:filename>", methods=["GET"])
+def servir_views(filename):
+    try:
+        return send_from_directory(str(BASE_DIR / "data"), filename)
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 404
+
 
 
 if __name__ == "__main__":

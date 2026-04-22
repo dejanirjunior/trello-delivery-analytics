@@ -25,3 +25,8 @@ typing_extensions==4.15.0
 urllib3==2.6.3
 Werkzeug==3.1.8
 zipp==3.23.1
+fastapi
+uvicorn[standard]
+matplotlib
+gunicorn
+flask-cors

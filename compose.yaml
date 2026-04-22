@@ -1,0 +1,7 @@
+services:
+  trello-dashboard:
+    build: .
+    container_name: trello-dashboard-container
+    ports:
+      - "8001:8000"
+    restart: unless-stopped

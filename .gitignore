@@ -1,9 +1,14 @@
+# Ambiente
 venv/
 .env
+
+# Dados gerados
+data/
+*.log
+
+# Sistema
 __pycache__/
 *.pyc
 
-data/*.csv
-data/*.json
-data/*.html
-data/cron.log
+# Ngrok monitor
+../ngrok-monitor/

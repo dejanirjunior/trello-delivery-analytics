@@ -497,8 +497,12 @@ def main():
       statusBox.innerText = "Executando atualização do pipeline...";
 
       try {{
-        const response = await fetch("http://192.168.100.10:5000/update", {{
-          method: "POST"
+        const response = await fetch("/trello/update", {{
+          method: "POST",
+          headers: {{
+            "ngrok-skip-browser-warning": "true",
+            "Accept": "application/json"
+          }}
         }});
 
         const data = await response.json();
