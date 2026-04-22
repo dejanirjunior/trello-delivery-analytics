@@ -251,6 +251,7 @@ def main():
       </div>
 
       <div class="header-actions">
+        <a class="btn" href="http://localhost:8003/daily">📅 Daily</a>
         <a class="btn" href="pm_flow_view.html">📈 Ver visão de flow</a>
         <a class="btn" href="pm_forecast_view.html">🎲 Probabilistic Forecast</a>
         <button class="btn" id="update-btn" onclick="updateData()">🔄 Atualizar dados</button>
