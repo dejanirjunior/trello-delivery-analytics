@@ -341,8 +341,8 @@ td {{
     <div class="header-sub">Indicadores complementares da operação do projeto</div>
 
     <div class="top-nav">
-      <a href="/views/executive_{slug}.html" class="nav-btn">📊 Executivo</a>
-      <a href="/views/dashboard_{slug}.html" class="nav-btn active">📈 Dashboard</a>
+      <a href="/clientes/{slug}" class="nav-btn">📊 Executivo</a>
+      <a href="/clientes/{slug}/dashboard" class="nav-btn active">📈 Dashboard</a>
     </div>
   </div>
 
