@@ -5,5 +5,5 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - /home/ubuntu/apps/trello-dashboard/data:/app/data
+      - ./data:/app/data
     restart: unless-stopped

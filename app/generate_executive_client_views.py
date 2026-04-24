@@ -5,18 +5,18 @@ import pandas as pd
 from executive_metrics import build_executive_summary, load_data, filter_by_client
 from client_config import load_clients
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 
-
 STATUS_ORDER = ["Done", "Doing", "Block", "To Do"]
+
 STATUS_LABELS = {
     "Done": "Finalizado",
     "Doing": "Em andamento",
     "Block": "Bloqueado",
     "To Do": "Não iniciado",
 }
+
 STATUS_COLORS = {
     "Done": "#3ecf8e",
     "Doing": "#4f8ef7",
@@ -35,19 +35,16 @@ MODULE_ORDER = [
 ]
 
 
-def slugify_client(client):
-    return client.lower().replace(" ", "_")
-
-
 def safe(value):
-    if pd.isna(value):
+    if value is None or pd.isna(value):
         return ""
     return escape(str(value))
 
 
 def split_modules(value):
-    if pd.isna(value) or not str(value).strip():
+    if value is None or pd.isna(value) or not str(value).strip():
         return ["Sem módulo informado"]
+
     return [m.strip() for m in str(value).split("|") if m.strip()]
 
 
@@ -59,6 +56,7 @@ def pct(part, total):
 
 def build_donut_gradient(status):
     total = sum(status.values())
+
     if total == 0:
         return "#1a2238 0deg 360deg"
 
@@ -79,6 +77,13 @@ def build_donut_gradient(status):
 def build_module_data(df):
     rows = []
 
+    if df.empty:
+        return []
+
+    if "modulos" not in df.columns:
+        df = df.copy()
+        df["modulos"] = "Sem módulo informado"
+
     for _, row in df.iterrows():
         for module in split_modules(row.get("modulos")):
             rows.append({
@@ -90,16 +95,17 @@ def build_module_data(df):
         return []
 
     mod_df = pd.DataFrame(rows)
-
-    modules = []
     all_modules = list(MODULE_ORDER)
 
     for module in sorted(mod_df["module"].dropna().unique()):
         if module not in all_modules:
             all_modules.append(module)
 
+    modules = []
+
     for module in all_modules:
         subset = mod_df[mod_df["module"] == module]
+
         if subset.empty:
             continue
 
@@ -122,6 +128,32 @@ def build_module_data(df):
     return modules
 
 
+def module_class(name):
+    normalized = str(name).lower()
+
+    if "crm" in normalized:
+        return "crm"
+    if "compra" in normalized:
+        return "compras"
+    if "orcamento" in normalized or "orçamento" in normalized:
+        return "orcamento"
+
+    return "generic"
+
+
+def module_badge_class(name):
+    normalized = str(name).lower()
+
+    if "crm" in normalized:
+        return "crm"
+    if "compra" in normalized:
+        return "cp"
+    if "orcamento" in normalized or "orçamento" in normalized:
+        return "orc"
+
+    return "gen"
+
+
 def render_status_legend(status):
     html = ""
 
@@ -129,8 +161,7 @@ def render_status_legend(status):
         html += f"""
         <div class="legend-item">
             <div class="legend-dot" style="background:{STATUS_COLORS[key]}"></div>
-            <span>{STATUS_LABELS[key]}</span>
-            <strong>{status.get(key, 0)}</strong>
+            {STATUS_LABELS[key]} <strong>{status.get(key, 0)}</strong>
         </div>
         """
 
@@ -145,42 +176,33 @@ def render_module_cards(modules):
 
     for i, module in enumerate(modules, start=1):
         name = safe(module["name"])
-        progress = module["progress"]
-
-        accent = "#4f8ef7"
-        if name == "Compras":
-            accent = "#f0a046"
-        elif name == "Orcamento":
-            accent = "#3ecf8e"
-        elif name == "Contratos":
-            accent = "#c9a84c"
-        elif name == "Fornecedor":
-            accent = "#a78bfa"
-        elif name == "Suprimentos":
-            accent = "#38bdf8"
-        elif name == "Sem módulo informado":
-            accent = "#7c8daa"
+        cls = module_class(module["name"])
 
         html += f"""
-        <div class="module-card" style="--accent:{accent}">
+        <div class="module-card {cls}">
             <div class="module-num">Módulo {i}</div>
             <div class="module-name">{name}</div>
 
             <div class="module-progress">
                 <div class="module-progress-top">
                     <span>Progresso</span>
-                    <strong>{progress}%</strong>
+                    <strong>{module["progress"]}%</strong>
                 </div>
                 <div class="mod-bar-track">
-                    <div class="mod-bar-fill" style="width:{progress}%"></div>
+                    <div class="mod-bar-fill" style="--target: {module["progress"]}%"></div>
                 </div>
             </div>
 
             <div class="module-stats">
-                <div class="stat-chip"><span style="background:#3ecf8e"></span>{module["done"]} Finalizados</div>
-                <div class="stat-chip"><span style="background:#4f8ef7"></span>{module["doing"]} Em andamento</div>
-                <div class="stat-chip"><span style="background:#f06565"></span>{module["block"]} Bloqueados</div>
-                <div class="stat-chip"><span style="background:#454f65"></span>{module["todo"]} Não iniciados</div>
+                <div class="stat-chip"><div class="dot" style="background:var(--done)"></div>{module["done"]} Finalizados</div>
+                <div class="stat-chip"><div class="dot" style="background:var(--progress)"></div>{module["doing"]} Em andamento</div>
+                <div class="stat-chip"><div class="dot" style="background:var(--blocked)"></div>{module["block"]} Bloqueados</div>
+                <div class="stat-chip"><div class="dot" style="background:var(--not-started)"></div>{module["todo"]} Não iniciados</div>
+            </div>
+
+            <div class="module-detail">
+                <div class="module-detail-title">Classificação</div>
+                {module["total"]} cards vinculados a este módulo.
             </div>
         </div>
         """
@@ -191,29 +213,28 @@ def render_module_cards(modules):
 def render_kanban(df):
     html = ""
 
-    for status_key in ["Done", "Doing", "Block", "To Do"]:
-        subset = df[df["status_kanban"] == status_key].head(8)
+    for status_key in STATUS_ORDER:
+        subset_all = df[df["status_kanban"] == status_key]
+        subset = subset_all.head(8)
         color = STATUS_COLORS[status_key]
         title = STATUS_LABELS[status_key]
-        count = len(df[df["status_kanban"] == status_key])
+        count = len(subset_all)
 
         cards_html = ""
 
         if subset.empty:
             cards_html = '<div class="kanban-empty">Sem cards nesta etapa.</div>'
         else:
-            for _, row in subset.iterrows():
-                module = safe(row.get("modulos", "Sem módulo informado"))
+            for idx, (_, row) in enumerate(subset.iterrows(), start=1):
                 title_card = safe(row.get("titulo", ""))
-                risk = safe(row.get("risk", ""))
-
-                risk_html = f'<span class="mini-risk">Risk: {risk}</span>' if risk else ""
+                module = safe(row.get("modulos", "Sem módulo informado"))
+                module_cls = module_badge_class(module)
 
                 cards_html += f"""
                 <div class="kanban-card">
-                    <div class="kanban-card-title">{title_card}</div>
-                    <div class="kanban-card-meta">{module}</div>
-                    {risk_html}
+                    <div class="card-id">#{idx}</div>
+                    {title_card}
+                    <div class="card-module {module_cls}">{module}</div>
                 </div>
                 """
 
@@ -235,67 +256,107 @@ def render_kanban(df):
     return html
 
 
+def build_card_list(df, limit=5):
+    if df.empty:
+        return '<div class="alert-empty">Nenhum card encontrado.</div>'
+
+    cards = ""
+
+    for _, row in df.head(limit).iterrows():
+        titulo = safe(row.get("titulo", ""))
+        modulo = safe(row.get("modulos", "Sem módulo informado"))
+        responsavel = safe(row.get("assigned_members", ""))
+
+        meta_parts = []
+
+        if modulo:
+            meta_parts.append(modulo)
+
+        if responsavel:
+            meta_parts.append(responsavel)
+
+        meta = " · ".join(meta_parts)
+
+        cards += f"""
+        <div class="alert-item">
+            <strong>{titulo}</strong>
+            <div class="alert-meta">{meta}</div>
+        </div>
+        """
+
+    if len(df) > limit:
+        cards += f'<div class="alert-more">+{len(df) - limit} outros cards</div>'
+
+    return cards
+
+
 def render_alerts(summary, df):
     blocked = summary["blocked"]
     high_risk = summary["high_risk"]
     overdue = summary["overdue"]
 
-    sem_modulo = len(df[df["modulos"].astype(str).str.contains("Sem módulo informado", na=False)])
+    if "modulos" in df.columns:
+        sem_modulo = df[df["modulos"].astype(str).str.contains("Sem módulo informado", na=False)]
+    else:
+        sem_modulo = df
 
-    alerts = [
-        {
-            "icon": "⛔",
-            "title": "Cards bloqueados",
-            "desc": f"{len(blocked)} cards estão marcados com BLOCK e exigem acompanhamento.",
-            "badge": f"{len(blocked)} bloqueados",
-        },
-        {
-            "icon": "⚠️",
-            "title": "Risco alto",
-            "desc": f"{len(high_risk)} cards estão sinalizados com risco alto.",
-            "badge": f"{len(high_risk)} em risco",
-        },
-        {
-            "icon": "⏰",
-            "title": "Prazos vencidos",
-            "desc": f"{len(overdue)} cards possuem data vencida e ainda não estão concluídos.",
-            "badge": f"{len(overdue)} atrasados",
-        },
-        {
-            "icon": "🧩",
-            "title": "Classificação por módulo",
-            "desc": f"{sem_modulo} cards ainda estão sem label de módulo.",
-            "badge": f"{sem_modulo} sem módulo",
-        },
-    ]
-
-    html = ""
-
-    for alert in alerts:
-        html += f"""
-        <div class="alert-card">
-            <div class="alert-icon">{alert["icon"]}</div>
-            <div>
-                <div class="alert-title">{alert["title"]}</div>
-                <div class="alert-desc">{alert["desc"]}</div>
-                <div class="alert-badge">● {alert["badge"]}</div>
-            </div>
+    return f"""
+    <div class="alert-card">
+        <div class="alert-icon">⛔</div>
+        <div class="alert-content">
+            <div class="alert-title">Cards bloqueados</div>
+            <div class="alert-desc">{len(blocked)} cards estão marcados como bloqueados e exigem acompanhamento.</div>
+            <div class="alert-badge">● {len(blocked)} bloqueados</div>
+            {build_card_list(blocked)}
         </div>
-        """
+    </div>
 
-    return html
+    <div class="alert-card">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content">
+            <div class="alert-title">Risco alto</div>
+            <div class="alert-desc">{len(high_risk)} cards estão sinalizados com risco alto.</div>
+            <div class="alert-badge">● {len(high_risk)} em risco</div>
+            {build_card_list(high_risk)}
+        </div>
+    </div>
+
+    <div class="alert-card">
+        <div class="alert-icon">⏰</div>
+        <div class="alert-content">
+            <div class="alert-title">Prazos vencidos</div>
+            <div class="alert-desc">{len(overdue)} cards possuem data vencida e ainda não foram concluídos.</div>
+            <div class="alert-badge">● {len(overdue)} atrasados</div>
+            {build_card_list(overdue)}
+        </div>
+    </div>
+
+    <div class="alert-card">
+        <div class="alert-icon">🧩</div>
+        <div class="alert-content">
+            <div class="alert-title">Classificação por módulo</div>
+            <div class="alert-desc">{len(sem_modulo)} cards ainda estão sem label de módulo.</div>
+            <div class="alert-badge">● {len(sem_modulo)} sem módulo</div>
+            {build_card_list(sem_modulo)}
+        </div>
+    </div>
+    """
 
 
-def build_html(client):
-    summary = build_executive_summary(client)
+def build_html(client_name, slug):
+    summary = build_executive_summary(client_name)
     df_all = load_data()
-    df = filter_by_client(df_all, client)
+    df = filter_by_client(df_all, client_name)
+
+    if "modulos" not in df.columns:
+        df = df.copy()
+        df["modulos"] = "Sem módulo informado"
 
     total = summary["total_cards"]
     progress = summary["progress"]
     status = summary["status"]
     modules = build_module_data(df)
-
+    module_count = len([m for m in modules if m["name"] != "Sem módulo informado"])
     donut = build_donut_gradient(status)
 
     return f"""<!DOCTYPE html>
@@ -303,571 +364,794 @@ def build_html(client):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{safe(client)} · Panorama Executivo</title>
+<title>{safe(client_name)} · Panorama Executivo</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
 <style>
-:root {{
+  :root {{
     --bg: #0b0f1a;
     --surface: #131929;
     --surface2: #1a2238;
-    --border: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.07);
     --text: #e8eaf0;
     --muted: #8891a8;
     --gold: #c9a84c;
     --gold-light: #e4c97e;
-}}
+    --done: #3ecf8e;
+    --progress: #4f8ef7;
+    --blocked: #f06565;
+    --waiting: #f0a046;
+    --todo: #7c8daa;
+    --not-started: #454f65;
+  }}
 
-* {{
+  *, *::before, *::after {{
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-}}
+  }}
 
-body {{
+  html {{
+    scroll-behavior: smooth;
+  }}
+
+  body {{
     font-family: 'DM Sans', sans-serif;
-    background:
-        radial-gradient(circle at top left, rgba(201,168,76,0.08), transparent 28%),
-        radial-gradient(circle at top right, rgba(79,142,247,0.08), transparent 30%),
-        #0b0f1a;
+    background: var(--bg);
     color: var(--text);
     min-height: 100vh;
     font-size: 14px;
     line-height: 1.5;
-}}
+  }}
 
-body::before {{
+  body::before {{
     content: '';
     position: fixed;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
     pointer-events: none;
+    z-index: 0;
     opacity: 0.5;
-}}
+  }}
 
-.page {{
+  .page {{
     position: relative;
     z-index: 1;
     max-width: 1200px;
     margin: 0 auto;
     padding: 40px 32px 80px;
-}}
+  }}
 
-.header {{
+  .header {{
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    gap: 24px;
     margin-bottom: 56px;
     padding-bottom: 32px;
     border-bottom: 1px solid var(--border);
-}}
+  }}
 
-.eyebrow {{
+  .eyebrow {{
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.18em;
     color: var(--gold);
     text-transform: uppercase;
     margin-bottom: 10px;
-}}
+  }}
 
-.header h1 {{
+  .header h1 {{
     font-family: 'DM Serif Display', serif;
-    font-size: 44px;
-    line-height: 1.05;
-}}
+    font-size: 42px;
+    line-height: 1.1;
+    color: var(--text);
+  }}
 
-.header h1 em {{
+  .header h1 em {{
+    font-style: italic;
     color: var(--gold-light);
-}}
+  }}
 
-.header-sub {{
+  .header-sub {{
     color: var(--muted);
-    margin-top: 10px;
+    margin-top: 8px;
     font-size: 13px;
-}}
+  }}
 
-.header-date {{
+  .top-nav {{
+    margin-top: 18px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 20;
+  }}
+
+  .nav-btn {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 112px;
+    padding: 9px 15px;
+    border-radius: 999px;
+    background: #1a2238;
+    color: #e8eaf0;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.14);
+    transition: 0.2s;
+  }}
+
+  .nav-btn:hover {{
+    background: #263149;
+    color: #ffffff;
+    transform: translateY(-1px);
+  }}
+
+  .nav-btn.active {{
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    color: #0b0f1a;
+    border-color: transparent;
+  }}
+
+  .header-date {{
     text-align: right;
     font-size: 12px;
     color: var(--muted);
-}}
+  }}
 
-.header-date strong {{
+  .header-date strong {{
     display: block;
-    font-size: 24px;
+    font-size: 22px;
+    font-weight: 600;
     color: var(--text);
-}}
+    margin-bottom: 2px;
+  }}
 
-.hero {{
-    background: linear-gradient(180deg, rgba(19,25,41,0.96), rgba(16,22,36,0.96));
+  .hero-progress {{
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 22px;
-    padding: 38px 42px;
-    margin-bottom: 34px;
+    border-radius: 20px;
+    padding: 36px 40px;
+    margin-bottom: 32px;
     display: grid;
-    grid-template-columns: 1fr 360px;
-    gap: 44px;
+    grid-template-columns: 1fr 340px;
+    gap: 40px;
     align-items: center;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.25);
     position: relative;
     overflow: hidden;
-}}
+  }}
 
-.hero::before {{
+  .hero-progress::before {{
     content: '';
     position: absolute;
-    top: -90px;
+    top: -60px;
     right: 200px;
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle, rgba(201,168,76,0.10), transparent 70%);
-}}
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }}
 
-.progress-label {{
+  .progress-label {{
     font-size: 12px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--gold);
-    font-weight: 700;
+    font-weight: 600;
     margin-bottom: 8px;
-}}
+  }}
 
-.progress-number {{
+  .progress-number {{
     font-family: 'DM Serif Display', serif;
-    font-size: 76px;
+    font-size: 72px;
     line-height: 1;
-}}
+    color: var(--text);
+  }}
 
-.progress-number span {{
-    font-size: 34px;
+  .progress-number span {{
+    font-size: 32px;
     color: var(--muted);
-}}
+  }}
 
-.progress-desc {{
+  .progress-desc {{
     color: var(--muted);
     font-size: 13px;
-    margin-top: 8px;
-}}
+    margin-top: 6px;
+  }}
 
-.bar-track {{
-    margin-top: 22px;
+  .progress-bar-wrap {{
+    margin-top: 20px;
+  }}
+
+  .bar-track {{
     background: var(--surface2);
     border-radius: 100px;
     height: 10px;
     overflow: hidden;
-}}
+  }}
 
-.bar-fill {{
+  .bar-fill {{
     height: 100%;
     border-radius: 100px;
-    background: linear-gradient(90deg, var(--gold), var(--gold-light));
-}}
+    background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
+    width: 0;
+    animation: growBar 1.2s cubic-bezier(.22,.9,.36,1) forwards;
+  }}
 
-.donut-area {{
+  @keyframes growBar {{
+    to {{
+      width: var(--target);
+    }}
+  }}
+
+  .donut-area {{
     display: flex;
     align-items: center;
-    gap: 28px;
+    gap: 24px;
     position: relative;
     z-index: 1;
-}}
+  }}
 
-.donut {{
-    width: 132px;
-    height: 132px;
+  .donut-wrap {{
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
     border-radius: 50%;
     background: conic-gradient({donut});
-    display: grid;
-    place-items: center;
-}}
+  }}
 
-.donut::after {{
+  .donut-wrap::after {{
     content: '';
-    width: 84px;
-    height: 84px;
-    background: #131929;
+    position: absolute;
+    inset: 17px;
+    background: var(--surface);
     border-radius: 50%;
-    position: absolute;
-}}
+  }}
 
-.donut-center {{
+  .donut-center {{
     position: absolute;
-    text-align: center;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     z-index: 2;
-}}
+  }}
 
-.donut-center strong {{
-    display: block;
+  .donut-center .dc-num {{
     font-family: 'DM Serif Display', serif;
-    font-size: 25px;
-}}
+    font-size: 22px;
+    color: var(--text);
+  }}
 
-.donut-center span {{
+  .donut-center .dc-label {{
     font-size: 9px;
     color: var(--muted);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-}}
+  }}
 
-.legend {{
+  .legend {{
     display: flex;
     flex-direction: column;
-    gap: 9px;
-    min-width: 170px;
-}}
+    gap: 8px;
+    min-width: 165px;
+  }}
 
-.legend-item {{
-    display: grid;
-    grid-template-columns: 10px 1fr auto;
+  .legend-item {{
+    display: flex;
     align-items: center;
     gap: 8px;
     font-size: 12px;
     color: var(--muted);
-}}
+  }}
 
-.legend-dot {{
+  .legend-dot {{
     width: 8px;
     height: 8px;
     border-radius: 50%;
-}}
+    flex-shrink: 0;
+  }}
 
-.legend-item strong {{
+  .legend-item strong {{
     color: var(--text);
-}}
+    font-weight: 600;
+    margin-left: auto;
+    padding-left: 16px;
+  }}
 
-.section-title {{
+  .section-title {{
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--gold);
     margin-bottom: 16px;
-    margin-top: 42px;
-}}
+    margin-top: 40px;
+  }}
 
-.modules-grid {{
+  .modules-grid {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
-}}
+  }}
 
-.module-card {{
-    background: rgba(19,25,41,0.96);
+  .module-card {{
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 18px;
+    border-radius: 16px;
     padding: 28px 24px;
     position: relative;
     overflow: hidden;
-}}
+    animation: fadeUp 0.5s ease both;
+  }}
 
-.module-card::after {{
+  .module-card:nth-child(2) {{
+    animation-delay: 0.1s;
+  }}
+
+  .module-card:nth-child(3) {{
+    animation-delay: 0.2s;
+  }}
+
+  @keyframes fadeUp {{
+    from {{
+      opacity: 0;
+      transform: translateY(16px);
+    }}
+    to {{
+      opacity: 1;
+      transform: translateY(0);
+    }}
+  }}
+
+  .module-card::after {{
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 3px;
-    background: var(--accent);
-}}
+    border-radius: 16px 16px 0 0;
+  }}
 
-.module-num {{
+  .module-card.crm::after {{
+    background: var(--progress);
+  }}
+
+  .module-card.compras::after {{
+    background: var(--waiting);
+  }}
+
+  .module-card.orcamento::after {{
+    background: var(--done);
+  }}
+
+  .module-card.generic::after {{
+    background: var(--gold);
+  }}
+
+  .module-num {{
     font-size: 10px;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--muted);
-    font-weight: 700;
-    margin-bottom: 7px;
-}}
+    font-weight: 600;
+    margin-bottom: 6px;
+  }}
 
-.module-name {{
+  .module-name {{
     font-family: 'DM Serif Display', serif;
-    font-size: 22px;
+    font-size: 20px;
+    color: var(--text);
+    line-height: 1.2;
     margin-bottom: 20px;
-}}
+  }}
 
-.module-progress-top {{
+  .module-progress {{
+    margin-bottom: 16px;
+  }}
+
+  .module-progress-top {{
     display: flex;
     justify-content: space-between;
+    margin-bottom: 6px;
     font-size: 12px;
     color: var(--muted);
-    margin-bottom: 7px;
-}}
+  }}
 
-.module-progress-top strong {{
+  .module-progress-top strong {{
     color: var(--text);
     font-size: 14px;
-}}
+  }}
 
-.mod-bar-track {{
-    background: #080b12;
+  .mod-bar-track {{
+    background: var(--bg);
     border-radius: 100px;
     height: 6px;
     overflow: hidden;
-}}
+  }}
 
-.mod-bar-fill {{
+  .mod-bar-fill {{
     height: 100%;
-    background: var(--accent);
     border-radius: 100px;
-}}
+    animation: growBar 1.2s cubic-bezier(.22,.9,.36,1) forwards;
+    width: 0;
+  }}
 
-.module-stats {{
+  .crm .mod-bar-fill {{
+    background: var(--progress);
+  }}
+
+  .compras .mod-bar-fill {{
+    background: var(--waiting);
+  }}
+
+  .orcamento .mod-bar-fill {{
+    background: var(--done);
+  }}
+
+  .generic .mod-bar-fill {{
+    background: var(--gold);
+  }}
+
+  .module-stats {{
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 17px;
-}}
+    margin-top: 16px;
+  }}
 
-.stat-chip {{
+  .stat-chip {{
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: #0b0f1a;
+    gap: 5px;
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 100px;
     padding: 4px 10px;
     font-size: 11px;
     color: var(--muted);
-}}
+  }}
 
-.stat-chip span {{
+  .stat-chip .dot {{
     width: 6px;
     height: 6px;
     border-radius: 50%;
-}}
+  }}
 
-.kanban-grid {{
+  .module-detail {{
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }}
+
+  .module-detail-title {{
+    margin-bottom: 4px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+  }}
+
+  .kanban-grid {{
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-}}
+    gap: 12px;
+  }}
 
-.kanban-col {{
-    background: rgba(19,25,41,0.96);
+  .kanban-col {{
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 14px;
     overflow: hidden;
-}}
+  }}
 
-.kanban-header {{
+  .kanban-header {{
     padding: 14px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-}}
+  }}
 
-.kanban-header-inner {{
+  .kanban-header-inner {{
     display: flex;
-    gap: 8px;
     align-items: center;
-}}
+    gap: 8px;
+  }}
 
-.kanban-dot {{
+  .kanban-dot {{
     width: 8px;
     height: 8px;
     border-radius: 50%;
-}}
+  }}
 
-.kanban-title {{
+  .kanban-title {{
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.10em;
+    font-weight: 600;
     text-transform: uppercase;
-}}
+    letter-spacing: 0.1em;
+  }}
 
-.kanban-count {{
-    background: #0b0f1a;
+  .kanban-count {{
+    background: var(--bg);
     border-radius: 100px;
     padding: 2px 8px;
     font-size: 11px;
-    font-weight: 700;
-}}
+    font-weight: 600;
+    color: var(--text);
+  }}
 
-.kanban-body {{
+  .kanban-body {{
     padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-}}
+  }}
 
-.kanban-card {{
-    background: #0b0f1a;
+  .kanban-card {{
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 11px 12px;
-}}
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }}
 
-.kanban-card-title {{
-    font-size: 12px;
-    color: var(--text);
-    line-height: 1.35;
-}}
+  .kanban-card:hover {{
+    border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+  }}
 
-.kanban-card-meta {{
-    margin-top: 6px;
+  .kanban-card .card-id {{
     font-size: 10px;
     color: var(--gold);
-}}
+    font-weight: 600;
+    margin-bottom: 4px;
+  }}
 
-.mini-risk {{
+  .kanban-card .card-module {{
     display: inline-block;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
     margin-top: 6px;
-    font-size: 10px;
-    color: #f06565;
-}}
+    font-weight: 600;
+  }}
 
-.kanban-empty {{
-    font-size: 12px;
+  .kanban-card .card-module.crm {{
+    background: rgba(79,142,247,0.15);
+    color: var(--progress);
+  }}
+
+  .kanban-card .card-module.cp {{
+    background: rgba(240,160,70,0.15);
+    color: var(--waiting);
+  }}
+
+  .kanban-card .card-module.orc {{
+    background: rgba(62,207,142,0.15);
+    color: var(--done);
+  }}
+
+  .kanban-card .card-module.gen {{
+    background: rgba(201,168,76,0.15);
+    color: var(--gold);
+  }}
+
+  .kanban-empty {{
+    font-size: 11px;
     color: var(--muted);
-}}
+  }}
 
-.alerts-grid {{
+  .alerts-grid {{
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-}}
+  }}
 
-.alert-card {{
-    background: rgba(19,25,41,0.96);
-    border: 1px solid rgba(240,101,101,0.22);
-    border-radius: 16px;
+  .alert-card {{
+    background: var(--surface);
+    border: 1px solid rgba(240, 101, 101, 0.2);
+    border-radius: 14px;
     padding: 20px 22px;
     display: flex;
     gap: 14px;
-}}
+    align-items: flex-start;
+  }}
 
-.alert-icon {{
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
+  .alert-icon {{
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: rgba(240,101,101,0.15);
     display: flex;
     align-items: center;
     justify-content: center;
-}}
+    flex-shrink: 0;
+    font-size: 16px;
+  }}
 
-.alert-title {{
+  .alert-content {{
+    width: 100%;
+  }}
+
+  .alert-title {{
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
+    color: var(--text);
     margin-bottom: 4px;
-}}
+  }}
 
-.alert-desc {{
+  .alert-desc {{
     font-size: 11px;
     color: var(--muted);
-}}
+    line-height: 1.5;
+  }}
 
-.alert-badge {{
+  .alert-badge {{
     display: inline-flex;
-    margin-top: 8px;
+    align-items: center;
+    gap: 5px;
     background: rgba(240,101,101,0.15);
-    border: 1px solid rgba(240,101,101,0.30);
-    color: #f06565;
+    border: 1px solid rgba(240,101,101,0.3);
+    color: var(--blocked);
     border-radius: 100px;
     padding: 2px 8px;
     font-size: 10px;
     font-weight: 700;
+    margin-top: 8px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-}}
+  }}
 
-.footer {{
-    margin-top: 58px;
+  .alert-item {{
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--bg);
+    font-size: 11px;
+    border: 1px solid var(--border);
+  }}
+
+  .alert-item strong {{
+    display: block;
+    color: var(--text);
+    line-height: 1.35;
+  }}
+
+  .alert-meta {{
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 4px;
+  }}
+
+  .alert-more,
+  .alert-empty {{
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }}
+
+  .footer {{
+    margin-top: 60px;
     padding-top: 24px;
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 11px;
-    color: #667085;
-}}
+    color: var(--not-started);
+  }}
 
-.empty {{
+  .empty {{
     color: var(--muted);
-}}
+  }}
 
-@media (max-width: 980px) {{
-    .header,
-    .hero {{
-        grid-template-columns: 1fr;
-        display: block;
+  @media (max-width: 900px) {{
+    .header {{
+      flex-direction: column;
     }}
 
     .header-date {{
-        text-align: left;
-        margin-top: 24px;
+      text-align: left;
     }}
 
-    .modules-grid,
-    .kanban-grid,
+    .hero-progress {{
+      grid-template-columns: 1fr;
+    }}
+
+    .modules-grid {{
+      grid-template-columns: 1fr;
+    }}
+
+    .kanban-grid {{
+      grid-template-columns: 1fr;
+    }}
+
     .alerts-grid {{
-        grid-template-columns: 1fr;
+      grid-template-columns: 1fr;
     }}
-
-    .hero {{
-        padding: 28px;
-    }}
-}}
+  }}
 </style>
 </head>
 
 <body>
 <div class="page">
 
-<header class="header">
-    <div>
-        <div class="eyebrow">Relatório Executivo · Panorama do Projeto</div>
-        <h1>{safe(client)} — <em>Planning</em></h1>
-        <div class="header-sub">Delivery Analytics · Optaris</div>
-    </div>
-    <div class="header-date">
-        <strong>{progress}%</strong>
-        Progresso Global
-    </div>
-</header>
+  <header class="header">
+    <div class="header-left">
+      <div class="eyebrow">Relatório Executivo · Panorama do Projeto</div>
+      <h1>{safe(client_name)} &mdash; <em>Planning</em></h1>
+      <div class="header-sub">Delivery Analytics · Optaris</div>
 
-<section class="hero">
+      <div class="top-nav">
+        <a href="/views/executive_{slug}.html" class="nav-btn active">📊 Executivo</a>
+        <a href="/views/kanban_{slug}.html" class="nav-btn">📌 Kanban</a>
+        <a href="/views/dashboard_{slug}.html" class="nav-btn">📈 Dashboard</a>
+      </div>
+    </div>
+
+    <div class="header-date">
+      <strong>{progress}%</strong>
+      Progresso Global
+    </div>
+  </header>
+
+  <div class="hero-progress">
     <div>
-        <div class="progress-label">Avanço Geral do Projeto</div>
-        <div class="progress-number">{progress}<span>%</span></div>
-        <div class="progress-desc">{total} cards monitorados · progresso calculado por cards concluídos</div>
+      <div class="progress-label">Avanço Geral do Projeto</div>
+      <div class="progress-number">{progress}<span>%</span></div>
+      <div class="progress-desc">{total} cards monitorados · {module_count} módulos classificados</div>
+      <div class="progress-bar-wrap">
         <div class="bar-track">
-            <div class="bar-fill" style="width:{progress}%"></div>
+          <div class="bar-fill" style="--target: {progress}%"></div>
         </div>
+      </div>
     </div>
 
     <div class="donut-area">
-        <div class="donut">
-            <div class="donut-center">
-                <strong>{total}</strong>
-                <span>cards</span>
-            </div>
+      <div class="donut-wrap">
+        <div class="donut-center">
+          <div class="dc-num">{total}</div>
+          <div class="dc-label">cards</div>
         </div>
-        <div class="legend">
-            {render_status_legend(status)}
-        </div>
+      </div>
+
+      <div class="legend">
+        {render_status_legend(status)}
+      </div>
     </div>
-</section>
+  </div>
 
-<div class="section-title">Módulos do Projeto</div>
-<div class="modules-grid">
+  <div class="section-title">Módulos do Projeto</div>
+  <div class="modules-grid">
     {render_module_cards(modules)}
-</div>
+  </div>
 
-<div class="section-title">Board Executivo · Cards por Status</div>
-<div class="kanban-grid">
+  <div class="section-title" style="margin-top:48px;">Board de Status · Cards do Projeto</div>
+  <div class="kanban-grid">
     {render_kanban(df)}
-</div>
+  </div>
 
-<div class="section-title">Impedimentos & Pontos de Atenção</div>
-<div class="alerts-grid">
+  <div class="section-title" style="margin-top:48px;">⚠ Impedimentos &amp; Pontos de Atenção</div>
+  <div class="alerts-grid">
     {render_alerts(summary, df)}
-</div>
+  </div>
 
-<div class="footer">
-    <div>Gerado automaticamente pelo Trello Delivery Analytics</div>
-    <div>{safe(client)} · {progress}% de progresso · {total} cards</div>
-</div>
+  <div class="footer">
+    <div>Gerado automaticamente com base nos dados do Trello · Optaris</div>
+    <div>Progresso geral: <strong style="color:var(--gold)">{progress}%</strong> · {total} cards</div>
+  </div>
 
 </div>
 </body>
@@ -888,12 +1172,14 @@ def generate():
 
         print(f"\nGerando view para: {name}")
 
-        html = build_html(name)
-
+        html = build_html(name, slug)
         output = DATA_DIR / f"executive_{slug}.html"
         output.write_text(html, encoding="utf-8")
 
         print(f"Gerado: {output}")
 
+
 if __name__ == "__main__":
     generate()
+
+
