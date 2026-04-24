@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from html import escape
 import pandas as pd
@@ -67,22 +68,47 @@ def build_donut_gradient(status):
         value = status.get(key, 0)
         degrees = (value / total) * 360
         end = start + degrees
-        color = STATUS_COLORS[key]
-        parts.append(f"{color} {start:.2f}deg {end:.2f}deg")
+        parts.append(f"{STATUS_COLORS[key]} {start:.2f}deg {end:.2f}deg")
         start = end
 
     return ", ".join(parts)
 
 
-def build_module_data(df):
-    rows = []
+def module_class(name):
+    normalized = str(name).lower()
 
+    if "crm" in normalized:
+        return "crm"
+    if "compra" in normalized:
+        return "compras"
+    if "orcamento" in normalized or "orçamento" in normalized:
+        return "orcamento"
+
+    return "generic"
+
+
+def module_badge_class(name):
+    normalized = str(name).lower()
+
+    if "crm" in normalized:
+        return "crm"
+    if "compra" in normalized:
+        return "cp"
+    if "orcamento" in normalized or "orçamento" in normalized:
+        return "orc"
+
+    return "gen"
+
+
+def build_module_data(df):
     if df.empty:
         return []
 
     if "modulos" not in df.columns:
         df = df.copy()
         df["modulos"] = "Sem módulo informado"
+
+    rows = []
 
     for _, row in df.iterrows():
         for module in split_modules(row.get("modulos")):
@@ -126,32 +152,6 @@ def build_module_data(df):
         })
 
     return modules
-
-
-def module_class(name):
-    normalized = str(name).lower()
-
-    if "crm" in normalized:
-        return "crm"
-    if "compra" in normalized:
-        return "compras"
-    if "orcamento" in normalized or "orçamento" in normalized:
-        return "orcamento"
-
-    return "generic"
-
-
-def module_badge_class(name):
-    normalized = str(name).lower()
-
-    if "crm" in normalized:
-        return "crm"
-    if "compra" in normalized:
-        return "cp"
-    if "orcamento" in normalized or "orçamento" in normalized:
-        return "orc"
-
-    return "gen"
 
 
 def render_status_legend(status):
@@ -358,6 +358,9 @@ def build_html(client_name, slug):
     modules = build_module_data(df)
     module_count = len([m for m in modules if m["name"] != "Sem módulo informado"])
     donut = build_donut_gradient(status)
+
+    executive_url = f"/clientes/{slug}"
+    dashboard_url = f"/clientes/{slug}/dashboard"
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -687,14 +690,6 @@ def build_html(client_name, slug):
     position: relative;
     overflow: hidden;
     animation: fadeUp 0.5s ease both;
-  }}
-
-  .module-card:nth-child(2) {{
-    animation-delay: 0.1s;
-  }}
-
-  .module-card:nth-child(3) {{
-    animation-delay: 0.2s;
   }}
 
   @keyframes fadeUp {{
@@ -1095,8 +1090,8 @@ def build_html(client_name, slug):
       <div class="header-sub">Delivery Analytics · Optaris</div>
 
       <div class="top-nav">
-        <a href="/clientes{slug}" class="nav-btn active">📊 Executivo</a>
-        <a href="/clientes{slug}" class="nav-btn">📈 Dashboard</a>
+        <a href="{executive_url}" class="nav-btn active">📊 Executivo</a>
+        <a href="{dashboard_url}" class="nav-btn">📈 Dashboard</a>
       </div>
     </div>
 
