@@ -4,4 +4,6 @@ services:
     container_name: trello-dashboard-container
     ports:
       - "8001:8000"
+    volumes:
+      - /home/ubuntu/apps/trello-dashboard/data:/app/data
     restart: unless-stopped
