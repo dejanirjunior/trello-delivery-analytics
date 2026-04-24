@@ -1,0 +1,12 @@
+{
+  "clients": [
+    {
+      "name": "4Network",
+      "slug": "4network"
+    },
+    {
+      "name": "Consigaz",
+      "slug": "consigaz"
+    }
+  ]
+}

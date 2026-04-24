@@ -7,18 +7,76 @@ DATA_DIR = BASE_DIR / "data"
 INPUT_FILE = DATA_DIR / "cards_enriched.csv"
 OUTPUT_FILE = DATA_DIR / "kanban_dataset.csv"
 
+MODULE_LABELS = {
+    "MOD_ORCAMENTO": "Orcamento",
+    "MOD_SUPRIMENTOS": "Suprimentos",
+    "MOD_CONTRATOS": "Contratos",
+    "MOD_FORNECEDOR": "Fornecedor",
+    "MOD_COMPRAS": "Compras",
+    "MOD_CRM": "CRM",
+}
+
+
+def safe_text(value):
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def normalize_label_key(label):
+    return (
+        safe_text(label)
+        .upper()
+        .replace("Ó", "O")
+        .replace("Ô", "O")
+        .replace("Õ", "O")
+        .replace("Á", "A")
+        .replace("À", "A")
+        .replace("Ã", "A")
+        .replace("É", "E")
+        .replace("Ê", "E")
+        .replace("Í", "I")
+        .replace("Ú", "U")
+        .replace("Ç", "C")
+        .replace(" ", "_")
+        .replace("-", "_")
+    )
+
+
+def split_labels(labels):
+    text = safe_text(labels)
+
+    if not text:
+        return []
+
+    cleaned = (
+        text.replace("[", "")
+        .replace("]", "")
+        .replace('"', "")
+        .replace("'", "")
+    )
+
+    if "|" in cleaned:
+        parts = cleaned.split("|")
+    elif ";" in cleaned:
+        parts = cleaned.split(";")
+    else:
+        parts = cleaned.split(",")
+
+    return [p.strip() for p in parts if p.strip()]
+
 
 def classify_tipo(labels):
-    if not isinstance(labels, str) or not labels.strip():
-        return "GERAL"
+    labels_upper = safe_text(labels).upper()
 
-    labels_upper = labels.upper()
+    if not labels_upper:
+        return "GERAL"
 
     if "BUG" in labels_upper:
         return "BUG"
     if "BLOCK" in labels_upper:
         return "BLOCK"
-    if "DEBITOTECNICO" in labels_upper:
+    if "DEBITOTECNICO" in labels_upper or "DEBITO TECNICO" in labels_upper:
         return "DEBITO TECNICO"
     if "FEATURE" in labels_upper:
         return "FEATURE"
@@ -26,7 +84,27 @@ def classify_tipo(labels):
     return "GERAL"
 
 
-def normalize_status(lista):
+def extract_modules(labels):
+    modules = []
+
+    for label in split_labels(labels):
+        key = normalize_label_key(label)
+
+        if key in MODULE_LABELS:
+            modules.append(MODULE_LABELS[key])
+
+    if not modules:
+        return "Sem módulo informado"
+
+    return " | ".join(sorted(set(modules)))
+
+
+def normalize_status(lista, labels):
+    labels_upper = safe_text(labels).upper()
+
+    if "BLOCK" in labels_upper:
+        return "Block"
+
     if not isinstance(lista, str):
         return None
 
@@ -35,12 +113,15 @@ def normalize_status(lista):
     mapping = {
         "backlog": "To Do",
         "refinado": "To Do",
+
         "em dev": "Doing",
         "q.a.": "Doing",
         "qa": "Doing",
         "uat": "Doing",
+
         "concluído": "Done",
         "concluido": "Done",
+        "deploy": "Done",
         "deploy prd": "Done",
     }
 
@@ -57,10 +138,16 @@ def main():
 
     df = pd.read_csv(INPUT_FILE)
 
-    df["tipo"] = df["labels"].apply(classify_tipo)
-    df["status_kanban"] = df["lista"].apply(normalize_status)
+    if "labels" not in df.columns:
+        df["labels"] = ""
 
-    # remover cards sem status válido (ex: Painel)
+    df["tipo"] = df["labels"].apply(classify_tipo)
+    df["modulos"] = df["labels"].apply(extract_modules)
+    df["status_kanban"] = df.apply(
+        lambda row: normalize_status(row.get("lista"), row.get("labels")),
+        axis=1
+    )
+
     df = df[df["status_kanban"].notna()]
 
     keep_cols = [
@@ -68,6 +155,8 @@ def main():
         "card_name",
         "status_kanban",
         "cliente_label",
+        "labels",
+        "modulos",
         "assigned_members",
         "member_count",
         "is_block",
@@ -83,7 +172,6 @@ def main():
     ]
 
     existing_cols = [col for col in keep_cols if col in df.columns]
-
     df_kanban = df[existing_cols].copy()
 
     df_kanban.rename(
@@ -109,5 +197,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
