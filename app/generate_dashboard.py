@@ -1,252 +1,524 @@
 from pathlib import Path
+from html import escape
 import json
-import re
 import pandas as pd
+
+from client_config import load_clients
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-
 INPUT_FILE = DATA_DIR / "kanban_dataset.csv"
 
 
-def slugify(text):
-    text = str(text).strip().lower()
-    text = re.sub(r"[^\w\s-]", "", text, flags=re.UNICODE)
-    text = re.sub(r"[\s-]+", "_", text)
-    return text
+STATUS_ORDER = ["To Do", "Doing", "Done", "Block"]
 
 
-def build_dashboard_html(cliente, df_cliente):
-    total_cards = len(df_cliente)
-    total_effort = pd.to_numeric(df_cliente["effort"], errors="coerce").fillna(0).sum()
-    total_executed = pd.to_numeric(df_cliente["total_horas_executado"], errors="coerce").fillna(0).sum()
-    bloqueados = int(df_cliente["bloqueado"].fillna(False).astype(bool).sum())
+def safe(v):
+    if pd.isna(v):
+        return ""
+    return escape(str(v))
 
-    status_counts = (
-        df_cliente["status_kanban"]
-        .fillna("Não definido")
-        .value_counts()
-        .reindex(["To Do", "Doing", "Done"], fill_value=0)
-    )
 
-    priority_counts = df_cliente["priority"].fillna("Sem prioridade").value_counts()
-    risk_counts = df_cliente["risk"].fillna("Sem risco").value_counts()
+def pct(part, total):
+    return int((part / total) * 100) if total else 0
 
-    table_df = df_cliente[[
-        "titulo",
-        "status_kanban",
-        "priority",
-        "risk",
-        "bloqueado",
-        "effort",
-        "total_horas_executado",
-        "data_compromisso",
-        "due_date"
-    ]].copy()
 
-    table_df["priority"] = table_df["priority"].fillna("Sem prioridade")
-    table_df["risk"] = table_df["risk"].fillna("Sem risco")
-    table_df["effort"] = pd.to_numeric(table_df["effort"], errors="coerce").fillna(0)
-    table_df["total_horas_executado"] = pd.to_numeric(table_df["total_horas_executado"], errors="coerce").fillna(0)
-    table_df["bloqueado"] = table_df["bloqueado"].apply(lambda x: "Sim" if bool(x) else "Não")
-    table_df["data_compromisso"] = table_df["data_compromisso"].fillna("Não informada")
-    table_df["due_date"] = table_df["due_date"].fillna("Não informada")
+def counts_for(df, column):
+    if column not in df.columns:
+        return {}, [], []
 
-    rows = []
-    for _, row in table_df.iterrows():
-        rows.append(f"""
+    counts = df[column].fillna("Não informado").astype(str).value_counts().to_dict()
+    labels = list(counts.keys())
+    values = [int(v) for v in counts.values()]
+    return counts, labels, values
+
+
+def build_dashboard_html(cliente, slug, df):
+    total = len(df)
+    done = len(df[df["status_kanban"] == "Done"])
+    blocked = len(df[df["status_kanban"] == "Block"])
+    doing = len(df[df["status_kanban"] == "Doing"])
+    todo = len(df[df["status_kanban"] == "To Do"])
+    progress = pct(done, total)
+
+    high_risk = 0
+    if "risk" in df.columns:
+        high_risk = len(df[df["risk"].astype(str).str.lower() == "high"])
+
+    status_values = [todo, doing, done, blocked]
+    status_labels = ["To Do", "Doing", "Done", "Block"]
+
+    _, module_labels, module_values = counts_for(df, "modulos")
+    _, risk_labels, risk_values = counts_for(df, "risk")
+    _, priority_labels, priority_values = counts_for(df, "priority")
+
+    critical = df[
+        (df["status_kanban"] == "Block")
+        | (df.get("risk", "").astype(str).str.lower() == "high")
+    ].head(20)
+
+    rows = ""
+    for _, r in critical.iterrows():
+        rows += f"""
         <tr>
-            <td>{row['titulo']}</td>
-            <td>{row['status_kanban']}</td>
-            <td>{row['priority']}</td>
-            <td>{row['risk']}</td>
-            <td>{row['bloqueado']}</td>
-            <td>{row['effort']}</td>
-            <td>{row['total_horas_executado']}</td>
-            <td>{row['data_compromisso']}</td>
-            <td>{row['due_date']}</td>
+            <td>{safe(r.get("titulo"))}</td>
+            <td>{safe(r.get("status_kanban"))}</td>
+            <td>{safe(r.get("modulos", "Sem módulo informado"))}</td>
+            <td>{safe(r.get("risk", "Sem risco"))}</td>
+            <td>{safe(r.get("priority", "Sem prioridade"))}</td>
         </tr>
-        """)
+        """
 
-    status_labels = json.dumps(list(status_counts.index))
-    status_values = json.dumps([int(v) for v in status_counts.values])
-
-    priority_labels = json.dumps([str(x) for x in priority_counts.index.tolist()])
-    priority_values = json.dumps([int(v) for v in priority_counts.values.tolist()])
-
-    risk_labels = json.dumps([str(x) for x in risk_counts.index.tolist()])
-    risk_values = json.dumps([int(v) for v in risk_counts.values.tolist()])
-
-    html = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Executivo - {cliente}</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; margin: 0; color: #1f2937; }}
-    header {{ background: #183a66; color: white; padding: 22px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }}
-    header h1 {{ margin: 0; font-size: 1.4rem; }}
-    header p {{ margin: 6px 0 0; opacity: 0.85; font-size: 0.95rem; }}
-    .container {{ padding: 24px 28px 40px; }}
-    .kpis {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }}
-    .kpi {{ background: white; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
-    .kpi-label {{ font-size: 0.82rem; color: #6b7280; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }}
-    .kpi-value {{ font-size: 1.8rem; font-weight: 700; color: #111827; }}
-    .grid {{ display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }}
-    .panel {{ background: white; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
-    .panel h2 {{ margin: 0 0 14px; font-size: 1rem; color: #183a66; }}
-    .table-panel {{ background: white; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow-x: auto; }}
-    table {{ width: 100%; border-collapse: collapse; font-size: 0.88rem; }}
-    thead {{ background: #eef2f7; }}
-    th, td {{ padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{safe(cliente)} · Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {{
+  --bg:#0b0f1a;
+  --surface:#131929;
+  --surface2:#1a2238;
+  --border:rgba(255,255,255,.08);
+  --text:#e8eaf0;
+  --muted:#8891a8;
+  --gold:#c9a84c;
+  --gold-light:#e4c97e;
+  --done:#3ecf8e;
+  --progress:#4f8ef7;
+  --blocked:#f06565;
+  --todo:#454f65;
+}}
+
+* {{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}}
+
+body {{
+  font-family:'DM Sans', sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(201,168,76,.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(79,142,247,.08), transparent 30%),
+    var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}}
+
+body::before {{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;
+  opacity:.5;
+}}
+
+.page {{
+  position:relative;
+  z-index:1;
+  max-width:1200px;
+  margin:0 auto;
+  padding:40px 32px 80px;
+}}
+
+.header {{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:24px;
+  margin-bottom:42px;
+  padding-bottom:32px;
+  border-bottom:1px solid var(--border);
+}}
+
+.eyebrow {{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.18em;
+  color:var(--gold);
+  text-transform:uppercase;
+  margin-bottom:10px;
+}}
+
+.header h1 {{
+  font-family:'DM Serif Display', serif;
+  font-size:42px;
+  line-height:1.1;
+}}
+
+.header h1 em {{
+  color:var(--gold-light);
+}}
+
+.header-sub {{
+  color:var(--muted);
+  margin-top:8px;
+  font-size:13px;
+}}
+
+.top-nav {{
+  margin-top:18px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}}
+
+.nav-btn {{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:112px;
+  padding:9px 15px;
+  border-radius:999px;
+  background:var(--surface2);
+  color:var(--text);
+  font-size:12px;
+  font-weight:700;
+  text-decoration:none;
+  border:1px solid rgba(255,255,255,.14);
+}}
+
+.nav-btn.active {{
+  background:linear-gradient(90deg,var(--gold),var(--gold-light));
+  color:#0b0f1a;
+  border-color:transparent;
+}}
+
+.header-kpi {{
+  text-align:right;
+  color:var(--muted);
+  font-size:12px;
+}}
+
+.header-kpi strong {{
+  display:block;
+  color:var(--text);
+  font-size:24px;
+}}
+
+.kpis {{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:16px;
+  margin-bottom:28px;
+}}
+
+.kpi {{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 20px 70px rgba(0,0,0,.18);
+}}
+
+.kpi-label {{
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-weight:700;
+  margin-bottom:8px;
+}}
+
+.kpi-value {{
+  font-family:'DM Serif Display', serif;
+  font-size:38px;
+  line-height:1;
+}}
+
+.kpi-note {{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:8px;
+}}
+
+.grid {{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-bottom:18px;
+}}
+
+.panel {{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:22px;
+  min-height:330px;
+}}
+
+.panel h2 {{
+  font-size:12px;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  margin-bottom:18px;
+}}
+
+.chart-wrap {{
+  height:260px;
+}}
+
+.table-panel {{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:22px;
+  margin-top:18px;
+  overflow-x:auto;
+}}
+
+.table-panel h2 {{
+  font-size:12px;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  margin-bottom:16px;
+}}
+
+table {{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px;
+}}
+
+th {{
+  color:var(--muted);
+  text-align:left;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-size:10px;
+  padding:10px;
+  border-bottom:1px solid var(--border);
+}}
+
+td {{
+  padding:12px 10px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  color:var(--text);
+}}
+
+.footer {{
+  margin-top:58px;
+  padding-top:24px;
+  border-top:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  font-size:11px;
+  color:var(--muted);
+}}
+
+@media (max-width: 900px) {{
+  .header {{
+    flex-direction:column;
+  }}
+
+  .header-kpi {{
+    text-align:left;
+  }}
+
+  .kpis,
+  .grid {{
+    grid-template-columns:1fr;
+  }}
+}}
+</style>
 </head>
+
 <body>
-  <header>
-    <h1>📊 Dashboard Executivo - {cliente}</h1>
-    <p>Visão consolidada do andamento das demandas do cliente</p>
-  </header>
+<div class="page">
 
-  <div class="container">
-    <section class="kpis">
-      <div class="kpi">
-        <div class="kpi-label">Total de demandas</div>
-        <div class="kpi-value">{total_cards}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Effort total</div>
-        <div class="kpi-value">{total_effort:.0f}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Horas executadas</div>
-        <div class="kpi-value">{total_executed:.0f}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Bloqueadas</div>
-        <div class="kpi-value">{bloqueados}</div>
-      </div>
-    </section>
+<header class="header">
+  <div>
+    <div class="eyebrow">Dashboard Analítico · Projeto</div>
+    <h1>{safe(cliente)} — <em>Dashboard</em></h1>
+    <div class="header-sub">Indicadores complementares da operação do projeto</div>
 
-    <section class="grid">
-      <div class="panel">
-        <h2>Status das demandas</h2>
-        <canvas id="statusChart"></canvas>
-      </div>
-      <div class="panel">
-        <h2>Prioridade</h2>
-        <canvas id="priorityChart"></canvas>
-      </div>
-    </section>
-
-    <section class="grid">
-      <div class="panel">
-        <h2>Risco</h2>
-        <canvas id="riskChart"></canvas>
-      </div>
-      <div class="panel">
-        <h2>Resumo executivo</h2>
-        <p style="line-height:1.7; font-size:0.95rem;">
-          Este painel apresenta a distribuição atual das demandas do cliente, com foco em andamento, bloqueios,
-          esforço planejado, horas executadas e exposição a risco.
-        </p>
-      </div>
-    </section>
-
-    <section class="table-panel">
-      <h2>Demandas em acompanhamento</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Demanda</th>
-            <th>Status</th>
-            <th>Prioridade</th>
-            <th>Risco</th>
-            <th>Bloqueado</th>
-            <th>Effort</th>
-            <th>Horas Executadas</th>
-            <th>Data Compromisso</th>
-            <th>Prazo Trello</th>
-          </tr>
-        </thead>
-        <tbody>
-          {''.join(rows)}
-        </tbody>
-      </table>
-    </section>
+    <div class="top-nav">
+      <a href="/views/executive_{slug}.html" class="nav-btn">📊 Executivo</a>
+      <a href="/views/dashboard_{slug}.html" class="nav-btn active">📈 Dashboard</a>
+    </div>
   </div>
 
-  <script>
-    const statusLabels = {status_labels};
-    const statusValues = {status_values};
-    const priorityLabels = {priority_labels};
-    const priorityValues = {priority_values};
-    const riskLabels = {risk_labels};
-    const riskValues = {risk_values};
+  <div class="header-kpi">
+    <strong>{progress}%</strong>
+    Progresso global
+  </div>
+</header>
 
-    new Chart(document.getElementById('statusChart'), {{
-      type: 'bar',
-      data: {{
-        labels: statusLabels,
-        datasets: [{{ label: 'Demandas', data: statusValues }}]
-      }},
-      options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
-    }});
+<section class="kpis">
+  <div class="kpi">
+    <div class="kpi-label">Total de cards</div>
+    <div class="kpi-value">{total}</div>
+    <div class="kpi-note">Demandas monitoradas</div>
+  </div>
 
-    new Chart(document.getElementById('priorityChart'), {{
-      type: 'doughnut',
-      data: {{
-        labels: priorityLabels,
-        datasets: [{{ data: priorityValues }}]
-      }},
-      options: {{ responsive: true }}
-    }});
+  <div class="kpi">
+    <div class="kpi-label">Progresso</div>
+    <div class="kpi-value">{progress}%</div>
+    <div class="kpi-note">Done / Total</div>
+  </div>
 
-    new Chart(document.getElementById('riskChart'), {{
-      type: 'bar',
-      data: {{
-        labels: riskLabels,
-        datasets: [{{ label: 'Risco', data: riskValues }}]
+  <div class="kpi">
+    <div class="kpi-label">Bloqueados</div>
+    <div class="kpi-value">{blocked}</div>
+    <div class="kpi-note">Cards em Block</div>
+  </div>
+
+  <div class="kpi">
+    <div class="kpi-label">Risco alto</div>
+    <div class="kpi-value">{high_risk}</div>
+    <div class="kpi-note">Itens com exposição elevada</div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="panel">
+    <h2>Distribuição por status</h2>
+    <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>Distribuição por módulo</h2>
+    <div class="chart-wrap"><canvas id="moduleChart"></canvas></div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="panel">
+    <h2>Risco</h2>
+    <div class="chart-wrap"><canvas id="riskChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>Prioridade</h2>
+    <div class="chart-wrap"><canvas id="priorityChart"></canvas></div>
+  </div>
+</section>
+
+<section class="table-panel">
+  <h2>Cards críticos</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Card</th>
+        <th>Status</th>
+        <th>Módulo</th>
+        <th>Risco</th>
+        <th>Prioridade</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows if rows else '<tr><td colspan="5">Nenhum card crítico encontrado.</td></tr>'}
+    </tbody>
+  </table>
+</section>
+
+<div class="footer">
+  <div>Gerado automaticamente com base nos dados do Trello · Optaris</div>
+  <div>{safe(cliente)} · {total} cards · {progress}% de progresso</div>
+</div>
+
+</div>
+
+<script>
+Chart.defaults.color = '#8891a8';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+Chart.defaults.font.family = 'DM Sans';
+
+const colors = ['#454f65', '#4f8ef7', '#3ecf8e', '#f06565', '#c9a84c', '#f0a046', '#a78bfa', '#38bdf8'];
+
+function makeBarChart(id, labels, values, label) {{
+  new Chart(document.getElementById(id), {{
+    type: 'bar',
+    data: {{
+      labels,
+      datasets: [{{
+        label,
+        data: values,
+        backgroundColor: colors,
+        borderRadius: 8
+      }}]
+    }},
+    options: {{
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {{
+        legend: {{ display: false }}
       }},
-      options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
-    }});
-  </script>
+      scales: {{
+        y: {{ beginAtZero: true, ticks: {{ precision: 0 }} }},
+        x: {{ grid: {{ display: false }} }}
+      }}
+    }}
+  }});
+}}
+
+function makeDoughnutChart(id, labels, values) {{
+  new Chart(document.getElementById(id), {{
+    type: 'doughnut',
+    data: {{
+      labels,
+      datasets: [{{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 0
+      }}]
+    }},
+    options: {{
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {{
+        legend: {{
+          position: 'bottom',
+          labels: {{
+            boxWidth: 10,
+            usePointStyle: true
+          }}
+        }}
+      }}
+    }}
+  }});
+}}
+
+makeBarChart('statusChart', {json.dumps(status_labels)}, {json.dumps(status_values)}, 'Cards');
+makeDoughnutChart('moduleChart', {json.dumps(module_labels)}, {json.dumps(module_values)});
+makeBarChart('riskChart', {json.dumps(risk_labels)}, {json.dumps(risk_values)}, 'Cards');
+makeDoughnutChart('priorityChart', {json.dumps(priority_labels)}, {json.dumps(priority_values)});
+</script>
+
 </body>
 </html>
 """
-    return html
 
 
-def main():
+def generate():
     if not INPUT_FILE.exists():
-        print("Arquivo kanban_dataset.csv não encontrado em ./data")
+        print("Arquivo kanban_dataset.csv não encontrado")
         return
 
     df = pd.read_csv(INPUT_FILE)
+    clients = load_clients()
 
-    if "cliente" not in df.columns:
-        print("Coluna 'cliente' não encontrada no dataset.")
-        return
+    for client in clients:
+        name = client["name"]
+        slug = client["slug"]
 
-    clientes = sorted(df["cliente"].dropna().unique())
+        df_client = df[df["cliente"] == name].copy()
+        html = build_dashboard_html(name, slug, df_client)
 
-    if not clientes:
-        print("Nenhum cliente encontrado no dataset.")
-        return
+        output = DATA_DIR / f"dashboard_{slug}.html"
+        output.write_text(html, encoding="utf-8")
 
-    for cliente in clientes:
-        df_cliente = df[df["cliente"] == cliente].copy()
-        html = build_dashboard_html(cliente, df_cliente)
-
-        output_file = DATA_DIR / f"dashboard_{slugify(cliente)}.html"
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(html)
-
-        print(f"Dashboard gerado em: {output_file}")
+        print(f"Gerado: {output}")
 
 
 if __name__ == "__main__":
-    main()
-
-
+    generate()
