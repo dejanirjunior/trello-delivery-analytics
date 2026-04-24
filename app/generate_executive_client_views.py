@@ -1095,9 +1095,8 @@ def build_html(client_name, slug):
       <div class="header-sub">Delivery Analytics · Optaris</div>
 
       <div class="top-nav">
-        <a href="/views/executive_{slug}.html" class="nav-btn active">📊 Executivo</a>
-        <a href="/views/kanban_{slug}.html" class="nav-btn">📌 Kanban</a>
-        <a href="/views/dashboard_{slug}.html" class="nav-btn">📈 Dashboard</a>
+        <a href="/clientes{slug}" class="nav-btn active">📊 Executivo</a>
+        <a href="/clientes{slug}" class="nav-btn">📈 Dashboard</a>
       </div>
     </div>
 
