@@ -365,6 +365,7 @@ def build_html(client_name, slug):
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<link rel="icon" href="/static/favicon.ico">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{safe(client_name)} · Panorama Executivo</title>

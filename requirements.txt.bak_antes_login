@@ -30,7 +30,3 @@ uvicorn[standard]
 matplotlib
 gunicorn
 flask-cors
-
-flask-login
-flask-bcrypt
-flask-sqlalchemy

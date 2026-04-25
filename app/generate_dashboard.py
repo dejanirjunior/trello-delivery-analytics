@@ -72,6 +72,7 @@ def build_dashboard_html(cliente, slug, df):
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<link rel="icon" href="/static/favicon.ico">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{safe(cliente)} · Dashboard</title>
