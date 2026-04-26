@@ -491,21 +491,6 @@ def base_layout(title, content):
             </div>
 
             {content}
-        
-<footer class="optaris-footer" style="
-    margin-top:40px;
-    padding:20px;
-    text-align:center;
-    font-size:12px;
-    color:#888;
-    border-top:1px solid rgba(255,255,255,0.10);
-">
-    © Plataforma Optaris ·
-    <a href="/politica-privacidade" style="color:#888; text-decoration:underline;">
-        Política de Privacidade
-    </a>
-</footer>
-
         </main>
     </body>
     </html>
@@ -624,43 +609,6 @@ def logout():
     audit_log("logout", "user", session.get("user", "unknown"))
     session.clear()
     return redirect("/login")
-
-
-# =========================
-# WORKLOG LOCAL REDIRECTS
-# =========================
-
-def get_worklog_base_url():
-    host = request.host.split(":")[0]
-
-    if host in ["localhost", "127.0.0.1"]:
-        return "http://localhost:8003"
-
-    return ""
-
-
-@app.route("/daily")
-def redirect_daily():
-    base = get_worklog_base_url()
-    if base:
-        return redirect(f"{base}/daily")
-    return redirect("/daily")
-
-
-@app.route("/daily_history")
-def redirect_daily_history():
-    base = get_worklog_base_url()
-    if base:
-        return redirect(f"{base}/daily_history")
-    return redirect("/daily_history")
-
-
-@app.route("/worklog_history")
-def redirect_worklog_history():
-    base = get_worklog_base_url()
-    if base:
-        return redirect(f"{base}/worklog_history")
-    return redirect("/worklog_history")
 
 
 @app.route("/health")
@@ -1757,32 +1705,3 @@ def weekly_pdf(weekly_id):
         download_name=f"weekly_{weekly['client_slug']}_{weekly['date']}_{weekly_id}.pdf",
         mimetype="application/pdf"
     )
-
-# =========================
-# POLÍTICA DE PRIVACIDADE (LGPD)
-# =========================
-
-@app.route("/politica-privacidade")
-def politica_privacidade():
-    return base_layout("Política de Privacidade · Optaris", '''
-        <div class="card">
-            <h1>Política de Privacidade</h1>
-
-            <p>Esta plataforma é destinada à gestão de projetos e atividades operacionais, com acesso restrito a usuários autorizados.</p>
-
-            <h2>1. Dados tratados</h2>
-            <p>Podemos tratar dados como nome de usuário, identificação de responsáveis em atividades e registros operacionais.</p>
-
-            <h2>2. Finalidade</h2>
-            <p>Os dados são utilizados exclusivamente para gestão de projetos e acompanhamento de atividades.</p>
-
-            <h2>3. Compartilhamento</h2>
-            <p>Os dados não são compartilhados com terceiros externos.</p>
-
-            <h2>4. Segurança</h2>
-            <p>São aplicadas medidas de controle de acesso e autenticação.</p>
-
-            <h2>5. Direitos do titular</h2>
-            <p>Usuários podem solicitar atualização ou exclusão de dados.</p>
-        </div>
-    ''')
