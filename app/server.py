@@ -461,6 +461,15 @@ def get_nav_items():
 
 
 def base_layout(title, content):
+    nav_html = "".join([
+        f'<a class="btn btn-secondary" href="{url}">{label}</a>'
+        for label, url in get_nav_items()
+    ])
+
+    logout_html = ""
+    if is_logged():
+        logout_html = '<a class="btn btn-danger" href="/logout">Sair</a>'
+
     return f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -468,211 +477,16 @@ def base_layout(title, content):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{title}</title>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <style>
-            :root {{
-                --bg: #0b0f1a;
-                --surface: #131929;
-                --surface2: #1a2238;
-                --border: rgba(255,255,255,0.08);
-                --text: #e8eaf0;
-                --muted: #8891a8;
-                --gold: #c9a84c;
-                --gold-light: #e4c97e;
-                --danger: #f06565;
-            }}
-
-            * {{
-                box-sizing: border-box;
-            }}
-
-            body {{
-                margin: 0;
-                min-height: 100vh;
-                font-family: 'DM Sans', sans-serif;
-                background: var(--bg);
-                color: var(--text);
-            }}
-
-            body::before {{
-                content: '';
-                position: fixed;
-                inset: 0;
-                background: radial-gradient(circle at top right, rgba(201,168,76,0.10), transparent 35%);
-                pointer-events: none;
-            }}
-
-            .page {{
-                position: relative;
-                z-index: 1;
-                max-width: 1180px;
-                margin: 0 auto;
-                padding: 40px 32px 80px;
-            }}
-
-            .header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 24px;
-                padding-bottom: 28px;
-                margin-bottom: 28px;
-                border-bottom: 1px solid var(--border);
-            }}
-
-            .eyebrow {{
-                font-size: 11px;
-                font-weight: 700;
-                letter-spacing: 0.18em;
-                color: var(--gold);
-                text-transform: uppercase;
-                margin-bottom: 10px;
-            }}
-
-            h1 {{
-                font-family: 'DM Serif Display', serif;
-                font-size: 42px;
-                line-height: 1.1;
-                margin: 0;
-            }}
-            h2, h3 {{
-                margin-top: 0;
-            }}
-
-            p {{
-                color: var(--muted);
-            }}
-
-            .card {{
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 20px;
-                padding: 24px;
-                margin-bottom: 22px;
-                box-shadow: 0 18px 40px rgba(0,0,0,0.18);
-            }}
-
-            .grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-                gap: 18px;
-            }}
-
-            .client-card {{
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 18px;
-                padding: 22px;
-            }}
-
-            input, select {{
-                width: 100%;
-                padding: 12px;
-                margin: 7px 0 14px;
-                border-radius: 12px;
-                border: 1px solid var(--border);
-                background: var(--surface2);
-                color: var(--text);
-            }}
-
-            label {{
-                display: block;
-                color: var(--muted);
-                font-size: 13px;
-                font-weight: 700;
-            }}
-
-            button, .btn {{
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                padding: 11px 16px;
-                border-radius: 999px;
-                border: 0;
-                background: linear-gradient(90deg, var(--gold), var(--gold-light));
-                color: #0b0f1a;
-                font-weight: 800;
-                text-decoration: none;
-                cursor: pointer;
-                margin-right: 8px;
-            }}
-
-            .btn-secondary {{
-                background: var(--surface2);
-                color: var(--text);
-                border: 1px solid var(--border);
-            }}
-
-            .btn-danger {{
-                color: var(--danger);
-                text-decoration: none;
-                font-weight: 800;
-            }}
-
-            .links {{
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin-top: 16px;
-            }}
-
-            .checkbox-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-                gap: 8px;
-                margin: 10px 0 16px;
-            }}
-
-            .checkbox-item {{
-                background: var(--surface2);
-                border: 1px solid var(--border);
-                border-radius: 12px;
-                padding: 10px;
-                color: var(--text);
-            }}
-
-            .checkbox-item input {{
-                width: auto;
-                margin-right: 8px;
-            }}
-
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-            }}
-
-            th, td {{
-                padding: 12px;
-                border-bottom: 1px solid var(--border);
-                text-align: left;
-                vertical-align: top;
-            }}
-
-            th {{
-                color: var(--gold);
-                font-size: 12px;
-                text-transform: uppercase;
-                letter-spacing: .08em;
-            }}
-
-            code {{
-                color: var(--gold-light);
-            }}
-
-            .error {{
-                color: var(--danger);
-                font-weight: 700;
-            }}
-        </style>
+        <link rel="stylesheet" href="/static/style.css">
     </head>
     <body>
         <main class="page">
-            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                <div>
-                    {"".join([f'<a class="btn btn-secondary" href="{url}">{label}</a>' for label, url in get_nav_items()])}
+            <div class="top-menu">
+                <div class="top-menu-links">
+                    {nav_html}
                 </div>
-                <div>
-                    <a class="btn-danger" href="/logout">Sair</a>
+                <div class="top-menu-logout">
+                    {logout_html}
                 </div>
             </div>
 
