@@ -549,6 +549,19 @@ def login():
 
     return base_layout("Login · Optaris", f"""
         <div style="max-width:430px;margin:80px auto;">
+            
+<div style="text-align:center;margin-bottom:22px;">
+    <div style="
+        display:inline-block;
+        background:white;
+        padding:12px 18px;
+        border-radius:12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    ">
+        <img src="/static/logo.png" alt="Optaris" style="max-width:180px;height:auto;">
+    </div>
+</div>
+
             <div class="eyebrow">Optaris Delivery Platform</div>
             <h1>Portal de Acesso</h1>
             <p>Entre para acessar dashboards, portais de clientes e gestão administrativa.</p>
