@@ -764,6 +764,16 @@ def update():
         }), 500
 
 
+@app.route("/admin")
+@app.route("/admin/")
+def admin_home():
+    guard = require_login()
+    if guard:
+        return guard
+
+    return redirect("/admin/clientes")
+
+
 @app.route("/admin/clientes", methods=["GET"])
 def admin_clientes():
     guard = require_login()
@@ -793,6 +803,7 @@ def admin_clientes():
     if is_admin():
         admin_links = """
         <a class="btn btn-secondary" href="/admin/usuarios">Usuários</a>
+        <a class="btn btn-secondary" href="/admin/audit">Auditoria</a>
         """
 
     return base_layout("Clientes · Optaris", f"""
@@ -922,6 +933,7 @@ def admin_usuarios():
             </div>
             <div>
                 <a class="btn btn-secondary" href="/admin/clientes">Clientes</a>
+                <a class="btn btn-secondary" href="/admin/audit">Auditoria</a>
                 <a class="btn-danger" href="/logout">Sair</a>
             </div>
         </div>
@@ -1232,6 +1244,7 @@ def admin_audit():
             <div>
                 <a class="btn btn-secondary" href="/admin/clientes">Clientes</a>
                 <a class="btn btn-secondary" href="/admin/usuarios">Usuários</a>
+                <a class="btn btn-secondary" href="/admin/audit">Auditoria</a>
                 <a class="btn-danger" href="/logout">Sair</a>
             </div>
         </div>
