@@ -90,6 +90,27 @@ def slugify(text):
     return text
 
 
+def has_trello_data_for_client(slug):
+    import csv
+    file_path = BASE_DIR / "data" / "cards_enriched.csv"
+
+    if not file_path.exists():
+        return False
+
+    slug_lower = slug.lower()
+
+    with open(file_path, newline='', encoding='utf-8-sig') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for row in reader:
+            cliente = (row.get("cliente_label") or "").strip().lower()
+
+            if cliente == slug_lower:
+                return True
+
+    return False
+
+
 def load_clients_json():
     if not CLIENTS_FILE.exists():
         return {"clients": []}
@@ -402,6 +423,43 @@ init_db()
 create_default_user()
 sync_clients_json_to_db()
 
+
+def get_nav_items():
+    user = get_current_user()
+
+    if not user:
+        return []
+
+    role = user["role"]
+
+    if role == "admin":
+        return [
+            ("Clientes", "/admin/clientes"),
+            ("Usuários", "/admin/usuarios"),
+            ("Auditoria", "/admin/audit"),
+            ("Daily", "/daily"),
+            ("Histórico Daily", "/daily_history"),
+            ("Registro de Horas", "/"),
+            ("Histórico Horas", "/worklog_history"),
+            ("PM View", "/views/pm_view.html"),
+            ("Forecast", "/views/pm_forecast_view.html")
+        ]
+
+    if role == "internal":
+        return [
+            ("Clientes", "/admin/clientes"),
+            ("Daily", "/daily"),
+            ("Histórico Daily", "/daily_history"),
+            ("Registro de Horas", "/"),
+            ("Histórico Horas", "/worklog_history")
+        ]
+
+    if role == "client":
+        return []
+
+    return []
+
+
 def base_layout(title, content):
     return f"""
     <!DOCTYPE html>
@@ -609,6 +667,15 @@ def base_layout(title, content):
     </head>
     <body>
         <main class="page">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <div>
+                    {"".join([f'<a class="btn btn-secondary" href="{url}">{label}</a>' for label, url in get_nav_items()])}
+                </div>
+                <div>
+                    <a class="btn-danger" href="/logout">Sair</a>
+                </div>
+            </div>
+
             {content}
         </main>
     </body>
@@ -621,7 +688,13 @@ def home():
     if not is_logged():
         return redirect("/login")
 
-    return redirect("/admin/clientes")
+    return base_layout("Clientes · Optaris", f"""
+        <div class="card">
+            <h2>Status</h2>
+            <p>{message}</p>
+            <a class="btn btn-secondary" href="/admin/clientes">Voltar</a>
+        </div>
+    """)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -868,6 +941,22 @@ def salvar_cliente():
 
     conn.commit()
     conn.close()
+
+    has_data = has_trello_data_for_client(slug)
+
+    if has_data:
+        try:
+            subprocess.run(
+                ["python3", str(BASE_DIR / "app" / "main.py")],
+                capture_output=True,
+                text=True,
+                cwd=str(BASE_DIR)
+            )
+            message = "Cliente cadastrado e dashboards gerados."
+        except Exception:
+            message = "Cliente cadastrado, mas falha ao gerar dashboards."
+    else:
+        message = "Cliente cadastrado, mas NÃO há dados no Trello para esse cliente."
 
     data = load_clients_json()
     clients = data.get("clients", [])
