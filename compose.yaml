@@ -7,4 +7,5 @@ services:
     volumes:
       - ./data:/app/data
       - ./app/static:/app/static
+      - ./app/auth.db:/app/app/auth.db
     restart: unless-stopped
