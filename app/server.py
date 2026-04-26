@@ -252,9 +252,9 @@ def create_user(username, password, role, client_ids):
     password_hash = generate_password_hash(password)
 
     cursor.execute("""
-    INSERT INTO users (username, password_hash, role, clients, active)
-    VALUES (?, ?, ?, ?, ?)
-    """, (username, password_hash, role, "", 1))
+    INSERT INTO users (username, password_hash, role, clients, active, must_change_password)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (username, password_hash, role, "", 1, 1))
 
     user_id = cursor.lastrowid
 
@@ -279,6 +279,108 @@ def update_user_password(user_id, new_password):
     SET password_hash = ?, must_change_password = 0
     WHERE id = ?
     """, (password_hash, user_id))
+
+    conn.commit()
+    conn.close()
+
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, username, role, active, must_change_password
+    FROM users
+    WHERE id = ?
+    """, (user_id,))
+
+    user = cursor.fetchone()
+    conn.close()
+
+    return user
+
+
+def get_user_client_ids(user_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT client_id
+    FROM user_clients
+    WHERE user_id = ?
+    """, (user_id,))
+
+    ids = [str(row["client_id"]) for row in cursor.fetchall()]
+    conn.close()
+
+    return ids
+
+
+def update_user_profile(user_id, role, client_ids):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET role = ?
+    WHERE id = ?
+    """, (role, user_id))
+
+    cursor.execute("DELETE FROM user_clients WHERE user_id = ?", (user_id,))
+
+    for client_id in client_ids:
+        cursor.execute("""
+        INSERT OR IGNORE INTO user_clients (user_id, client_id)
+        VALUES (?, ?)
+        """, (user_id, client_id))
+
+    conn.commit()
+    conn.close()
+
+
+def set_user_active(user_id, active):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET active = ?
+    WHERE id = ?
+    """, (active, user_id))
+
+    conn.commit()
+    conn.close()
+
+
+def reset_user_password(user_id, new_password):
+    password_hash = generate_password_hash(new_password)
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET password_hash = ?, must_change_password = 1
+    WHERE id = ?
+    """, (password_hash, user_id))
+
+    conn.commit()
+    conn.close()
+
+
+
+def audit_log(action, target_type=None, target_value=None):
+    user = get_current_user()
+    username = user["username"] if user else session.get("user", "anonymous")
+    ip_address = request.headers.get("X-Forwarded-For", request.remote_addr)
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT INTO audit_logs (username, action, target_type, target_value, ip_address)
+    VALUES (?, ?, ?, ?, ?)
+    """, (username, action, target_type, target_value, ip_address))
 
     conn.commit()
     conn.close()
@@ -534,6 +636,7 @@ def login():
 
         if user and user["active"] == 1 and check_password_hash(user["password_hash"], password):
             session["user"] = username
+            audit_log("login_success", "user", username)
 
             if user["must_change_password"] == 1:
                 return redirect("/trocar-senha")
@@ -616,6 +719,7 @@ def trocar_senha():
 
 @app.route("/logout")
 def logout():
+    audit_log("logout", "user", session.get("user", "unknown"))
     session.clear()
     return redirect("/login")
 
@@ -799,6 +903,13 @@ def admin_usuarios():
             <td><code>{user["role"]}</code></td>
             <td>{linked}</td>
             <td>{status}</td>
+            <td>
+                <a class="btn btn-secondary" href="/admin/usuarios/{user["id"]}/editar">Editar</a>
+                <a class="btn btn-secondary" href="/admin/usuarios/{user["id"]}/resetar-senha">Resetar senha</a>
+                <form method="POST" action="/admin/usuarios/{user["id"]}/toggle" style="display:inline;">
+                    <button type="submit" class="btn-secondary">{ "Desativar" if user["active"] == 1 else "Ativar" }</button>
+                </form>
+            </td>
         </tr>
         """
 
@@ -851,6 +962,7 @@ def admin_usuarios():
                         <th>Perfil</th>
                         <th>Clientes</th>
                         <th>Status</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -883,10 +995,287 @@ def salvar_usuario():
 
     try:
         create_user(username, password, role, client_ids)
+        audit_log("user_created", "user", username)
     except sqlite3.IntegrityError:
         return "Usuário já existe", 400
 
     return redirect("/admin/usuarios")
+
+
+@app.route("/admin/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
+def editar_usuario(user_id):
+    guard = require_login()
+    if guard:
+        return guard
+
+    if not is_admin():
+        return "Acesso negado", 403
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        return "Usuário não encontrado", 404
+
+    if request.method == "POST":
+        role = request.form.get("role", "client").strip()
+        client_ids = request.form.getlist("client_ids")
+
+        if role not in ["admin", "internal", "client"]:
+            return "Perfil inválido", 400
+
+        update_user_profile(user_id, role, client_ids)
+        audit_log("user_updated", "user", user["username"])
+        return redirect("/admin/usuarios")
+
+    clients = get_clients()
+    selected_ids = get_user_client_ids(user_id)
+
+    client_checkboxes = ""
+
+    for client in clients:
+        checked = "checked" if str(client["id"]) in selected_ids else ""
+
+        client_checkboxes += f"""
+        <label class="checkbox-item">
+            <input type="checkbox" name="client_ids" value="{client["id"]}" {checked}>
+            {client["name"]}
+        </label>
+        """
+
+    return base_layout("Editar usuário · Optaris", f"""
+        <div class="card">
+            <h2>Editar usuário</h2>
+            <p>{user["username"]}</p>
+
+            <form method="POST">
+                <label>Perfil</label>
+                <select name="role" required>
+                    <option value="client" {"selected" if user["role"] == "client" else ""}>Cliente</option>
+                    <option value="internal" {"selected" if user["role"] == "internal" else ""}>Interno</option>
+                    <option value="admin" {"selected" if user["role"] == "admin" else ""}>Admin</option>
+                </select>
+
+                <div class="checkbox-grid">
+                    {client_checkboxes}
+                </div>
+
+                <button>Salvar</button>
+            </form>
+        </div>
+    """)
+
+
+@app.route("/admin/usuarios/<int:user_id>/resetar-senha", methods=["GET", "POST"])
+def resetar_senha_usuario(user_id):
+    guard = require_login()
+    if guard:
+        return guard
+
+    if not is_admin():
+        return "Acesso negado", 403
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        return "Usuário não encontrado", 404
+
+    error = ""
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if len(new_password) < 8:
+            error = "Senha deve ter 8 caracteres"
+        elif new_password != confirm_password:
+            error = "Confirmação incorreta"
+        else:
+            reset_user_password(user_id, new_password)
+            audit_log("password_reset", "user", user["username"])
+            return redirect("/admin/usuarios")
+
+    return base_layout("Resetar senha", f"""
+        <div class="card">
+            <h2>Resetar senha</h2>
+            <p>{user["username"]}</p>
+
+            <form method="POST">
+                <input name="new_password" type="password" placeholder="Nova senha" required>
+                <input name="confirm_password" type="password" placeholder="Confirmar senha" required>
+                <button>Resetar</button>
+            </form>
+
+            <p class="error">{error}</p>
+        </div>
+    """)
+
+
+@app.route("/admin/usuarios/<int:user_id>/toggle", methods=["POST"])
+def toggle_usuario(user_id):
+    guard = require_login()
+    if guard:
+        return guard
+
+    if not is_admin():
+        return "Acesso negado", 403
+
+    current_user = get_current_user()
+
+    if current_user and current_user["id"] == user_id:
+        return "Não pode desativar a si mesmo", 400
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        return "Usuário não encontrado", 404
+
+    new_status = 0 if user["active"] == 1 else 1
+    set_user_active(user_id, new_status)
+
+    action = "user_deactivated" if new_status == 0 else "user_activated"
+    audit_log(action, "user", user["username"])
+
+    return redirect("/admin/usuarios")
+
+
+@app.route("/admin/audit", methods=["GET"])
+def admin_audit():
+    guard = require_login()
+    if guard:
+        return guard
+
+    if not is_admin():
+        return "Acesso negado", 403
+
+    username = request.args.get("username", "").strip()
+    action = request.args.get("action", "").strip()
+    limit_raw = request.args.get("limit", "100").strip()
+
+    try:
+        limit = int(limit_raw)
+    except ValueError:
+        limit = 100
+
+    if limit < 10:
+        limit = 10
+
+    if limit > 500:
+        limit = 500
+
+    query = """
+    SELECT id, username, action, target_type, target_value, ip_address, created_at
+    FROM audit_logs
+    WHERE 1 = 1
+    """
+
+    params = []
+
+    if username:
+        query += " AND username LIKE ?"
+        params.append(f"%{username}%")
+
+    if action:
+        query += " AND action = ?"
+        params.append(action)
+
+    query += " ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    logs = cursor.fetchall()
+
+    cursor.execute("""
+    SELECT DISTINCT action
+    FROM audit_logs
+    ORDER BY action
+    """)
+    actions = cursor.fetchall()
+
+    conn.close()
+
+    action_options = '<option value="">Todas as ações</option>'
+
+    for item in actions:
+        selected = "selected" if item["action"] == action else ""
+        action_options += f'<option value="{item["action"]}" {selected}>{item["action"]}</option>'
+
+    rows = ""
+
+    for log in logs:
+        rows += f"""
+        <tr>
+            <td>{log["created_at"]}</td>
+            <td>{log["username"] or ""}</td>
+            <td><code>{log["action"]}</code></td>
+            <td>{log["target_type"] or ""}</td>
+            <td>{log["target_value"] or ""}</td>
+            <td>{log["ip_address"] or ""}</td>
+        </tr>
+        """
+
+    if not rows:
+        rows = """
+        <tr>
+            <td colspan="6">Nenhum log encontrado para os filtros informados.</td>
+        </tr>
+        """
+
+    return base_layout("Auditoria · Optaris", f"""
+        <div class="header">
+            <div>
+                <div class="eyebrow">Segurança e governança</div>
+                <h1>Auditoria</h1>
+                <p>Consulte eventos de login, alterações de usuários, reset de senha e acesso às views.</p>
+            </div>
+            <div>
+                <a class="btn btn-secondary" href="/admin/clientes">Clientes</a>
+                <a class="btn btn-secondary" href="/admin/usuarios">Usuários</a>
+                <a class="btn-danger" href="/logout">Sair</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Filtros</h2>
+
+            <form method="GET" action="/admin/audit">
+                <label>Usuário</label>
+                <input name="username" value="{username}" placeholder="ex: admin ou email">
+
+                <label>Ação</label>
+                <select name="action">
+                    {action_options}
+                </select>
+
+                <label>Limite de registros</label>
+                <input name="limit" value="{limit}" placeholder="100">
+
+                <button type="submit">Filtrar</button>
+                <a class="btn btn-secondary" href="/admin/audit">Limpar</a>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Últimos eventos</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data/hora</th>
+                        <th>Usuário</th>
+                        <th>Ação</th>
+                        <th>Tipo</th>
+                        <th>Alvo</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows}
+                </tbody>
+            </table>
+        </div>
+    """)
 
 
 @app.route("/views/<path:filename>")
@@ -903,6 +1292,7 @@ def views(filename):
         if not user_has_client_access(slug):
             return "Acesso negado", 403
 
+    audit_log("view_accessed", "file", filename)
     return send_from_directory(DATA_DIR, filename)
 
 
