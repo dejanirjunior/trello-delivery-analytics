@@ -14,7 +14,7 @@ CORS(app)
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 CONFIG_DIR = BASE_DIR / "config"
-DB_PATH = BASE_DIR / "app" / "auth.db"
+DB_PATH = Path("/data/auth.db")
 CLIENTS_FILE = CONFIG_DIR / "clients.json"
 
 

@@ -7,5 +7,9 @@ services:
     volumes:
       - ./data:/app/data
       - ./app/static:/app/static
-      - ./app/auth.db:/app/app/auth.db
+      - trello_auth_data:/data
     restart: unless-stopped
+
+
+volumes:
+  trello_auth_data:
