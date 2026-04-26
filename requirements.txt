@@ -34,3 +34,4 @@ flask-cors
 flask-login
 flask-bcrypt
 flask-sqlalchemy
+reportlab

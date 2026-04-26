@@ -1463,7 +1463,7 @@ from flask import send_file
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-
+from reportlab.lib.pagesizes import A4
 from io import BytesIO
 from flask import send_file
 
@@ -1474,12 +1474,6 @@ def weekly_pdf(weekly_id):
     if guard:
         return guard
 
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
-
     from app.weekly_service import get_weekly_detail, is_blocked, is_high_risk, is_highest_risk
 
     detail = get_weekly_detail(weekly_id)
@@ -1487,221 +1481,96 @@ def weekly_pdf(weekly_id):
         return "Weekly não encontrada", 404
 
     weekly = detail["weekly"]
-    notes = detail["notes"]
     cards = detail["cards"]
-    blocked_cards = detail["blocked_cards"]
-    high_risk_cards = detail["high_risk_cards"]
-
-    if not user_has_client_access(weekly["client_slug"]):
-        return "Acesso negado", 403
 
     buffer = BytesIO()
-
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=14 * mm,
-        leftMargin=14 * mm,
-        topMargin=12 * mm,
-        bottomMargin=12 * mm
-    )
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
 
     styles = getSampleStyleSheet()
-    story = []
+    content = []
 
-    title_style = ParagraphStyle("OptarisTitle", parent=styles["Title"], fontSize=20, leading=24, spaceAfter=6)
-    h2_style = ParagraphStyle("OptarisH2", parent=styles["Heading2"], fontSize=13, leading=16, spaceBefore=12, spaceAfter=8)
-    normal = ParagraphStyle("OptarisNormal", parent=styles["Normal"], fontSize=8.5, leading=11)
-    small = ParagraphStyle("OptarisSmall", parent=styles["Normal"], fontSize=7.5, leading=9.5, textColor=colors.HexColor("#4b5563"))
-    white = ParagraphStyle("OptarisWhite", parent=styles["Normal"], fontSize=8, leading=10, textColor=colors.white)
+    # LOGO (ajuste o nome se necessário)
+    try:
+        logo = Image("/app/app/static/logo.png", width=120, height=40)
+        content.append(logo)
+    except:
+        pass
 
-    def clean(value):
-        return str(value or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    content.append(Spacer(1, 10))
 
-    def make_logo():
-        try:
-            logo = Image("/app/app/static/logo.png")
-            max_w = 34 * mm
-            max_h = 14 * mm
-            ratio = logo.imageWidth / logo.imageHeight
-            draw_w = max_w
-            draw_h = draw_w / ratio
+    # TÍTULO
+    content.append(Paragraph(f"<b>RELATÓRIO WEEKLY</b>", styles["Title"]))
+    content.append(Spacer(1, 6))
 
-            if draw_h > max_h:
-                draw_h = max_h
-                draw_w = draw_h * ratio
+    content.append(Paragraph(
+        f"<b>Cliente:</b> {weekly['client_slug']}<br/>"
+        f"<b>Data:</b> {weekly['date']}<br/>"
+        f"<b>Responsável:</b> {weekly['created_by']}",
+        styles["Normal"]
+    ))
 
-            logo.drawWidth = draw_w
-            logo.drawHeight = draw_h
-            return logo
-        except Exception:
-            return Paragraph("<b>Optaris</b>", title_style)
+    content.append(Spacer(1, 16))
 
-    usable_width = A4[0] - doc.leftMargin - doc.rightMargin
+    # RESUMO
+    blocked = [c for c in cards if is_blocked(c)]
+    risk = [c for c in cards if is_high_risk(c)]
 
-    header = Table(
-        [[
-            make_logo(),
-            Paragraph(
-                f"<b>RELATÓRIO WEEKLY</b><br/><font size='8'>Cliente: {clean(weekly['client_slug'])} · Data: {clean(weekly['date'])}</font>",
-                title_style
-            )
-        ]],
-        colWidths=[42 * mm, usable_width - 42 * mm]
-    )
-    header.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    summary_data = [
+        ["Indicador", "Quantidade"],
+        ["Total de Cards", str(len(cards))],
+        ["Bloqueados", str(len(blocked))],
+        ["Risco Alto/Máximo", str(len(risk))]
+    ]
+
+    table = Table(summary_data)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.black),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+        ("GRID", (0,0), (-1,-1), 1, colors.grey),
     ]))
-    story.append(header)
 
-    meta = Table(
-        [[
-            Paragraph("<b>Cliente</b><br/>" + clean(weekly["client_slug"]), normal),
-            Paragraph("<b>Data</b><br/>" + clean(weekly["date"]), normal),
-            Paragraph("<b>Responsável</b><br/>" + clean(weekly["created_by"]), normal),
-            Paragraph("<b>Gerado em</b><br/>" + clean(weekly["created_at"]), normal),
-        ]],
-        colWidths=[usable_width / 4] * 4
-    )
-    meta.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3f4f6")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d1d5db")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("PADDING", (0, 0), (-1, -1), 7),
-    ]))
-    story.append(meta)
-    story.append(Spacer(1, 10))
+    content.append(table)
+    content.append(Spacer(1, 20))
 
-    total = len(cards)
-    blocked = len(blocked_cards)
-    risk = len(high_risk_cards)
-    ok = max(total - blocked - risk, 0)
+    # SEÇÃO CARDS CRÍTICOS
+    content.append(Paragraph("<b>CARDS CRÍTICOS</b>", styles["Heading2"]))
+    content.append(Spacer(1, 10))
 
-    kpis = Table(
-        [[
-            Paragraph("<b>Total</b><br/><br/><font size='16'>" + str(total) + "</font>", white),
-            Paragraph("<b>Bloqueados</b><br/><br/><font size='16'>" + str(blocked) + "</font>", white),
-            Paragraph("<b>Risco alto/máximo</b><br/><br/><font size='16'>" + str(risk) + "</font>", white),
-            Paragraph("<b>Sem criticidade</b><br/><br/><font size='16'>" + str(ok) + "</font>", white),
-        ]],
-        colWidths=[usable_width / 4] * 4
-    )
-    kpis.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#111827")),
-        ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#dc2626")),
-        ("BACKGROUND", (2, 0), (2, 0), colors.HexColor("#f59e0b")),
-        ("BACKGROUND", (3, 0), (3, 0), colors.HexColor("#16a34a")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.white),
-        ("INNERGRID", (0, 0), (-1, -1), 1, colors.white),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("PADDING", (0, 0), (-1, -1), 8),
-    ]))
-    story.append(kpis)
-
-    story.append(Paragraph("Resumo executivo da reunião", h2_style))
-    notes_table = Table(
-        [
-            [Paragraph("<b>Riscos gerais</b>", normal), Paragraph(clean(notes["risks"] if notes else "") or "Não informado.", normal)],
-            [Paragraph("<b>Próximos passos</b>", normal), Paragraph(clean(notes["next_steps"] if notes else "") or "Não informado.", normal)],
-            [Paragraph("<b>Observações</b>", normal), Paragraph(clean(notes["notes"] if notes else "") or "Não informado.", normal)],
-        ],
-        colWidths=[38 * mm, usable_width - 38 * mm]
-    )
-    notes_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f3f4f6")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d1d5db")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("PADDING", (0, 0), (-1, -1), 6),
-    ]))
-    story.append(notes_table)
-
-    def criticidade(card):
+    for card in cards:
+        status = ""
         if is_blocked(card):
-            return "BLOCK", colors.HexColor("#dc2626")
-        if is_highest_risk(card):
-            return "RISCO MÁXIMO", colors.HexColor("#991b1b")
-        if is_high_risk(card):
-            return "RISCO ALTO", colors.HexColor("#f59e0b")
-        return "NORMAL", colors.HexColor("#6b7280")
+            status = "🔴 BLOCK"
+        elif is_highest_risk(card):
+            status = "🔴 RISCO MÁXIMO"
+        elif is_high_risk(card):
+            status = "⚠️ RISCO ALTO"
 
-    def comments_text(card):
-        comments = card.get("_comments", {}) or {}
-        parts = []
-        if comments.get("block_comment"):
-            parts.append("<b>Bloqueio:</b> " + clean(comments.get("block_comment")))
-        if comments.get("risk_comment"):
-            parts.append("<b>Risco:</b> " + clean(comments.get("risk_comment")))
-        if comments.get("next_step"):
-            parts.append("<b>Próximo passo:</b> " + clean(comments.get("next_step")))
-        return "<br/>".join(parts) if parts else "Sem comentário específico."
+        if status:
+            content.append(Paragraph(
+                f"<b>{card.get('card_name')}</b><br/>"
+                f"{status}<br/>"
+                f"Responsável: {card.get('assigned_members')}<br/>"
+                f"Status: {card.get('lista')}<br/>"
+                f"Prioridade: {card.get('priority')}",
+                styles["Normal"]
+            ))
+            content.append(Spacer(1, 12))
 
-    def render_section(title, section_cards):
-        story.append(Paragraph(title, h2_style))
+    # RODAPÉ
+    content.append(Spacer(1, 30))
+    content.append(Paragraph(
+        "Documento gerado automaticamente pelo sistema de gestão de delivery.",
+        styles["Italic"]
+    ))
 
-        if not section_cards:
-            story.append(Paragraph("Nenhum card nesta seção.", normal))
-            return
+    doc.build(content)
 
-        rows = [[
-            Paragraph("<b>Card</b>", white),
-            Paragraph("<b>Criticidade</b>", white),
-            Paragraph("<b>Status</b>", white),
-            Paragraph("<b>Responsável</b>", white),
-            Paragraph("<b>Comentários / próximos passos</b>", white),
-        ]]
-
-        row_colors = []
-
-        for card in section_cards:
-            label, color = criticidade(card)
-            row_colors.append(color)
-            rows.append([
-                Paragraph("<b>" + clean(card.get("card_name")) + "</b>", normal),
-                Paragraph("<b>" + label + "</b><br/>Prioridade: " + clean(card.get("priority") or "Não informada"), normal),
-                Paragraph(clean(card.get("lista") or "Não informado"), normal),
-                Paragraph(clean(card.get("assigned_members") or "Não informado"), normal),
-                Paragraph(comments_text(card), small),
-            ])
-
-        table = Table(
-            rows,
-            colWidths=[45 * mm, 30 * mm, 24 * mm, 30 * mm, usable_width - 129 * mm],
-            repeatRows=1
-        )
-
-        table_style = [
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
-            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
-            ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d1d5db")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("PADDING", (0, 0), (-1, -1), 5),
-        ]
-
-        for idx, color in enumerate(row_colors, start=1):
-            table_style.append(("LINEBEFORE", (0, idx), (0, idx), 4, color))
-            table_style.append(("BACKGROUND", (0, idx), (-1, idx), colors.HexColor("#ffffff")))
-
-        table.setStyle(TableStyle(table_style))
-        story.append(table)
-
-    render_section("Cards bloqueados", blocked_cards)
-    render_section("Cards com risco alto ou máximo", high_risk_cards)
-
-    story.append(PageBreak())
-    render_section("Snapshot completo da Weekly", cards)
-
-    story.append(Spacer(1, 12))
-    story.append(Paragraph("Documento gerado automaticamente pela Plataforma Optaris de Gestão de Delivery.", small))
-
-    doc.build(story)
     buffer.seek(0)
 
     return send_file(
         buffer,
         as_attachment=True,
-        download_name=f"weekly_{weekly['client_slug']}_{weekly['date']}_{weekly_id}.pdf",
+        download_name=f"weekly_{weekly_id}.pdf",
         mimetype="application/pdf"
     )
+

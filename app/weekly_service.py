@@ -1,0 +1,363 @@
+import csv
+import json
+import sqlite3
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+DB_PATH = BASE_DIR / "app" / "auth.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def load_cards():
+    file_path = DATA_DIR / "cards_enriched.csv"
+
+    if not file_path.exists():
+        return []
+
+    with open(file_path, newline="", encoding="utf-8-sig") as f:
+        return list(csv.DictReader(f))
+
+
+def load_cards_for_client(client_slug):
+    cards = load_cards()
+    return [
+        c for c in cards
+        if (c.get("cliente_label") or "").strip().lower() == client_slug.lower()
+    ]
+
+
+def is_blocked(card):
+    return str(card.get("is_block", "")).lower() == "true" or "BLOCK" in (card.get("labels") or "")
+
+
+def is_high_risk(card):
+    risk = (card.get("risk") or "").strip().lower()
+    return risk in ["high", "highest"]
+
+
+def is_highest_risk(card):
+    risk = (card.get("risk") or "").strip().lower()
+    return risk == "highest"
+
+
+def create_weekly(client_slug, date, user, risks, next_steps, notes, card_comments=None):
+    card_comments = card_comments or {}
+    cards_cliente = load_cards_for_client(client_slug)
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO weekly_reports (client_slug, date, created_by)
+        VALUES (?, ?, ?)
+    """, (client_slug, date, user))
+
+    weekly_id = cursor.lastrowid
+
+    for c in cards_cliente:
+        card_id = c.get("card_id") or ""
+
+        cursor.execute("""
+            INSERT INTO weekly_report_cards (
+                weekly_id, card_id, card_name, status, risk, priority, snapshot_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            weekly_id,
+            card_id,
+            c.get("card_name"),
+            c.get("lista"),
+            c.get("risk"),
+            c.get("priority"),
+            json.dumps(c, ensure_ascii=False)
+        ))
+
+        comments = card_comments.get(card_id, {})
+
+        if comments:
+            cursor.execute("""
+                INSERT INTO weekly_card_comments (
+                    weekly_id, card_id, block_comment, risk_comment, next_step
+                ) VALUES (?, ?, ?, ?, ?)
+            """, (
+                weekly_id,
+                card_id,
+                comments.get("block_comment", ""),
+                comments.get("risk_comment", ""),
+                comments.get("next_step", "")
+            ))
+
+    cursor.execute("""
+        INSERT INTO weekly_notes (weekly_id, risks, next_steps, notes)
+        VALUES (?, ?, ?, ?)
+    """, (weekly_id, risks, next_steps, notes))
+
+    conn.commit()
+    conn.close()
+
+    return weekly_id
+
+
+def list_weeklies(client_slug):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, client_slug, date, created_by, created_at
+        FROM weekly_reports
+        WHERE client_slug = ?
+        ORDER BY date DESC, id DESC
+    """, (client_slug,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return rows
+
+
+def get_weekly_detail(weekly_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, client_slug, date, created_by, created_at
+        FROM weekly_reports
+        WHERE id = ?
+    """, (weekly_id,))
+    weekly = cursor.fetchone()
+
+    if not weekly:
+        conn.close()
+        return None
+
+    cursor.execute("""
+        SELECT risks, next_steps, notes
+        FROM weekly_notes
+        WHERE weekly_id = ?
+    """, (weekly_id,))
+    notes = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT id, weekly_id, card_id, card_name, status, risk, priority, snapshot_json
+        FROM weekly_report_cards
+        WHERE weekly_id = ?
+        ORDER BY status, card_name
+    """, (weekly_id,))
+    card_rows = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT card_id, block_comment, risk_comment, next_step
+        FROM weekly_card_comments
+        WHERE weekly_id = ?
+    """, (weekly_id,))
+    comment_rows = cursor.fetchall()
+
+    conn.close()
+
+    comments_by_card = {
+        row["card_id"]: {
+            "block_comment": row["block_comment"] or "",
+            "risk_comment": row["risk_comment"] or "",
+            "next_step": row["next_step"] or ""
+        }
+        for row in comment_rows
+    }
+
+    cards = []
+
+    for row in card_rows:
+        snapshot = json.loads(row["snapshot_json"] or "{}")
+        snapshot["_comments"] = comments_by_card.get(row["card_id"], {})
+        cards.append(snapshot)
+
+    blocked_cards = [c for c in cards if is_blocked(c)]
+    high_risk_cards = [c for c in cards if is_high_risk(c)]
+
+    return {
+        "weekly": weekly,
+        "notes": notes,
+        "cards": cards,
+        "blocked_cards": blocked_cards,
+        "high_risk_cards": high_risk_cards
+    }
+
+
+def get_previous_weekly_id(client_slug, current_weekly_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, date, created_at
+        FROM weekly_reports
+        WHERE id = ?
+    """, (current_weekly_id,))
+    current = cursor.fetchone()
+
+    if not current:
+        conn.close()
+        return None
+
+    cursor.execute("""
+        SELECT id
+        FROM weekly_reports
+        WHERE client_slug = ?
+          AND id <> ?
+          AND (
+                date < ?
+                OR (date = ? AND created_at < ?)
+              )
+        ORDER BY date DESC, created_at DESC, id DESC
+        LIMIT 1
+    """, (
+        client_slug,
+        current_weekly_id,
+        current["date"],
+        current["date"],
+        current["created_at"]
+    ))
+
+    previous = cursor.fetchone()
+    conn.close()
+
+    return previous["id"] if previous else None
+
+
+def card_key(card):
+    return card.get("card_id") or card.get("card_name") or ""
+
+
+def build_card_map(cards):
+    return {
+        card_key(card): card
+        for card in cards
+        if card_key(card)
+    }
+
+
+def compare_weeklies(current_weekly_id):
+    current_detail = get_weekly_detail(current_weekly_id)
+
+    if not current_detail:
+        return None
+
+    current_weekly = current_detail["weekly"]
+    previous_id = get_previous_weekly_id(
+        current_weekly["client_slug"],
+        current_weekly_id
+    )
+
+    if not previous_id:
+        return {
+            "current": current_detail,
+            "previous": None,
+            "comparison": None
+        }
+
+    previous_detail = get_weekly_detail(previous_id)
+
+    current_cards = {
+    k: v for k, v in build_card_map(current_detail["cards"]).items()
+    if get_card_stage(v) != "backlog"
+}
+    previous_cards = {
+    k: v for k, v in build_card_map(previous_detail["cards"]).items()
+    if get_card_stage(v) != "backlog"
+}
+
+    current_blocked = {
+        key for key, card in current_cards.items()
+        if is_blocked(card)
+    }
+
+    previous_blocked = {
+        key for key, card in previous_cards.items()
+        if is_blocked(card)
+    }
+
+    current_risk = {
+        key for key, card in current_cards.items()
+        if is_high_risk(card)
+    }
+
+    previous_risk = {
+        key for key, card in previous_cards.items()
+        if is_high_risk(card)
+    }
+
+    still_blocked_keys = current_blocked & previous_blocked
+    new_blocked_keys = current_blocked - previous_blocked
+    resolved_blocked_keys = previous_blocked - current_blocked
+
+    still_risk_keys = current_risk & previous_risk
+    new_risk_keys = current_risk - previous_risk
+    resolved_risk_keys = previous_risk - current_risk
+
+    comparison = {
+        "still_blocked": [current_cards[k] for k in still_blocked_keys if k in current_cards],
+        "new_blocked": [current_cards[k] for k in new_blocked_keys if k in current_cards],
+        "resolved_blocked": [previous_cards[k] for k in resolved_blocked_keys if k in previous_cards],
+        "still_risk": [current_cards[k] for k in still_risk_keys if k in current_cards],
+        "new_risk": [current_cards[k] for k in new_risk_keys if k in current_cards],
+        "resolved_risk": [previous_cards[k] for k in resolved_risk_keys if k in previous_cards],
+    }
+
+    return {
+        "current": current_detail,
+        "previous": previous_detail,
+        "comparison": comparison
+    }
+
+def calculate_block_streak(client_slug, card_id):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id
+        FROM weekly_reports
+        WHERE client_slug = ?
+        ORDER BY date DESC, created_at DESC
+    """, (client_slug,))
+
+    weeklies = [row["id"] for row in cursor.fetchall()]
+
+    streak = 0
+
+    for wid in weeklies:
+        detail = get_weekly_detail(wid)
+
+        found_block = False
+
+        for card in detail["cards"]:
+            if (card.get("card_id") == card_id) and is_blocked(card):
+                found_block = True
+                break
+
+        if found_block:
+            streak += 1
+        else:
+            break
+
+    conn.close()
+    return streak
+
+def get_card_stage(card):
+    lista = (card.get("lista") or "").lower()
+
+    if "backlog" in lista:
+        return "backlog"
+
+    if "refinado" in lista:
+        return "refinado"
+
+    if "dev" in lista or "doing" in lista or "qa" in lista:
+        return "doing"
+
+    if "concluido" in lista or "done" in lista:
+        return "done"
+
+    return "other"
