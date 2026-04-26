@@ -150,7 +150,7 @@ def get_user_by_username(username):
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT id, username, password_hash, role, clients, active
+    SELECT id, username, password_hash, role, clients, active, must_change_password
     FROM users
     WHERE username = ?
     """, (username,))
@@ -268,9 +268,30 @@ def create_user(username, password, role, client_ids):
     conn.close()
 
 
+def update_user_password(user_id, new_password):
+    password_hash = generate_password_hash(new_password)
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET password_hash = ?, must_change_password = 0
+    WHERE id = ?
+    """, (password_hash, user_id))
+
+    conn.commit()
+    conn.close()
+
+
 def require_login():
     if not is_logged():
         return redirect("/login")
+
+    user = get_current_user()
+
+    if user and user["must_change_password"] == 1 and request.path != "/trocar-senha":
+        return redirect("/trocar-senha")
 
     return None
 
@@ -513,6 +534,10 @@ def login():
 
         if user and user["active"] == 1 and check_password_hash(user["password_hash"], password):
             session["user"] = username
+
+            if user["must_change_password"] == 1:
+                return redirect("/trocar-senha")
+
             return redirect("/admin/clientes")
 
         error = "Usuário ou senha inválidos."
@@ -533,6 +558,56 @@ def login():
 
                     <button type="submit">Entrar</button>
                 </form>
+                <p class="error">{error}</p>
+            </div>
+        </div>
+    """)
+
+
+@app.route("/trocar-senha", methods=["GET", "POST"])
+def trocar_senha():
+    guard = require_login()
+    if guard:
+        return guard
+
+    user = get_current_user()
+    error = ""
+
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not check_password_hash(user["password_hash"], current_password):
+            error = "Senha atual incorreta."
+        elif len(new_password) < 8:
+            error = "A nova senha deve ter pelo menos 8 caracteres."
+        elif new_password != confirm_password:
+            error = "A confirmação da senha não confere."
+        else:
+            update_user_password(user["id"], new_password)
+            return redirect("/admin/clientes")
+
+    return base_layout("Trocar senha · Optaris", f"""
+        <div style="max-width:520px;margin:70px auto;">
+            <div class="eyebrow">Segurança da conta</div>
+            <h1>Trocar senha</h1>
+            <p>Por segurança, altere sua senha inicial antes de continuar.</p>
+
+            <div class="card">
+                <form method="POST">
+                    <label>Senha atual</label>
+                    <input name="current_password" type="password" placeholder="Digite sua senha atual" required>
+
+                    <label>Nova senha</label>
+                    <input name="new_password" type="password" placeholder="Mínimo de 8 caracteres" required>
+
+                    <label>Confirmar nova senha</label>
+                    <input name="confirm_password" type="password" placeholder="Repita a nova senha" required>
+
+                    <button type="submit">Salvar nova senha</button>
+                </form>
+
                 <p class="error">{error}</p>
             </div>
         </div>
