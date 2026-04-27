@@ -424,52 +424,137 @@ create_default_user()
 sync_clients_json_to_db()
 
 
-def get_nav_items():
+
+
+def get_sidebar_clients():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+
+        rows = conn.execute("""
+            SELECT slug, name
+            FROM clients
+            ORDER BY name ASC
+        """).fetchall()
+
+        conn.close()
+        return rows
+
+    except Exception:
+        return []
+
+
+def get_nav_groups():
     user = get_current_user()
 
     if not user:
-        return []
+        return {
+            "admin": [],
+            "operation": [],
+            "internal_reports": [],
+            "clients": [],
+        }
 
     role = user["role"]
 
+    admin_items = []
+    operation_items = []
+    internal_report_items = []
+    client_items = []
+
     if role == "admin":
-        return [
+        admin_items = [
             ("Clientes", "/admin/clientes"),
             ("Usuários", "/admin/usuarios"),
             ("Auditoria", "/admin/audit"),
+        ]
+
+    if role in ["admin", "internal"]:
+        operation_items = [
+            ("Registro de Horas", "/registro-horas"),
             ("Daily", "/daily"),
             ("Histórico Daily", "/daily_history"),
-            ("Registro de Horas", "/registro-horas"),
             ("Histórico Horas", "/worklog_history"),
+        ]
+
+        internal_report_items = [
             ("PM View", "/views/pm_view.html"),
-            ("Forecast", "/views/pm_forecast_view.html")
+            ("Forecast", "/views/pm_forecast_view.html"),
         ]
 
-    if role == "internal":
-        return [
-            ("Clientes", "/admin/clientes"),
-            ("Registro de Horas", "/registro-horas"),
-            ("Daily", "/daily"),
-            ("Histórico Daily", "/daily_history"),
-            ("Registro de Horas", "/registro-horas"),
-            ("Histórico Horas", "/worklog_history")
-        ]
+        client_items = get_sidebar_clients()
 
-    if role == "client":
-        return []
+    return {
+        "admin": admin_items,
+        "operation": operation_items,
+        "internal_reports": internal_report_items,
+        "clients": client_items,
+    }
 
-    return []
+
+def get_nav_items():
+    groups = get_nav_groups()
+    return groups["admin"] + groups["operation"] + groups["internal_reports"]
 
 
 def base_layout(title, content):
-    nav_html = "".join([
-        f'<a class="btn btn-secondary" href="{url}">{label}</a>'
-        for label, url in get_nav_items()
-    ])
+    user = get_current_user()
+    groups = get_nav_groups()
+
+    def section(title, items):
+        if not items:
+            return ""
+
+        links = "".join([
+            f'<a class="sidebar-link" href="{url}">{label}</a>'
+            for label, url in items
+        ])
+
+        return f"""
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">{title}</div>
+                {links}
+            </div>
+        """
+
+    def reports_clientes_section(clients):
+        if not clients:
+            return ""
+
+        client_blocks = ""
+
+        for client in clients:
+            slug = client["slug"]
+            name = client["name"]
+
+            client_blocks += f"""
+                <div class="sidebar-client-name">{name}</div>
+                <a class="sidebar-link sidebar-sub-link" href="/clientes/{slug}" target="_blank" rel="noopener noreferrer">Executivo</a>
+                <a class="sidebar-link sidebar-sub-link" href="/clientes/{slug}/dashboard" target="_blank" rel="noopener noreferrer">Dashboard</a>
+                <a class="sidebar-link sidebar-sub-link" href="/weekly/{slug}">Weekly</a>
+            """
+
+        return f"""
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Relatórios</div>
+                <details class="sidebar-details">
+                    <summary>Reports Clientes</summary>
+                    <div class="sidebar-details-content">
+                        {client_blocks}
+                    </div>
+                </details>
+            </div>
+        """
+
+    nav_html = ""
+    nav_html += section("Administração", groups["admin"])
+    nav_html += section("Operação", groups["operation"])
+    nav_html += reports_clientes_section(groups["clients"])
+    nav_html += section("Relatórios Internos", groups["internal_reports"])
 
     logout_html = ""
     if is_logged():
-        logout_html = '<a class="btn btn-danger" href="/logout">Sair</a>'
+        logout_html = '<a class="sidebar-link logout" href="/logout">🚪 Sair</a>'
 
     return f"""
     <!DOCTYPE html>
@@ -479,39 +564,176 @@ def base_layout(title, content):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{title}</title>
         <link rel="stylesheet" href="/static/style.css">
+
+        <style>
+        body {{
+            margin: 0;
+            background: #f4f6f8;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111827;
+        }}
+
+        .layout {{
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }}
+
+        .sidebar {{
+            width: 280px;
+            min-width: 280px;
+            background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+            color: #e5e7eb;
+            padding: 22px 18px;
+            box-shadow: 8px 0 24px rgba(15, 23, 42, 0.18);
+            box-sizing: border-box;
+        }}
+
+        .sidebar-brand {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 22px;
+        }}
+
+        .sidebar-logo-box {{
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 8px 10px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+        }}
+
+        .sidebar-logo-box img {{
+            width: 92px;
+            height: auto;
+            display: block;
+        }}
+
+        .sidebar-title {{
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.1;
+            color: #e5e7eb;
+        }}
+
+        .sidebar-subtitle {{
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }}
+
+        .sidebar-section-title {{
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #94a3b8;
+            margin: 18px 0 8px 10px;
+            font-weight: 700;
+        }}
+
+        .sidebar-link {{
+            display: block;
+            padding: 10px 12px;
+            color: #e5e7eb;
+            text-decoration: none;
+            border-radius: 12px;
+            margin-bottom: 5px;
+            font-size: 14px;
+            line-height: 1.2;
+        }}
+
+        .sidebar-link:hover {{
+            background: rgba(59, 130, 246, 0.18);
+        }}
+
+        .sidebar-details {{
+            margin: 4px 0 10px;
+        }}
+
+        .sidebar-details summary {{
+            list-style: none;
+            cursor: pointer;
+            color: #e5e7eb;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+        }}
+
+        .sidebar-details summary::-webkit-details-marker {{
+            display: none;
+        }}
+
+        .sidebar-details summary:hover {{
+            background: rgba(59, 130, 246, 0.18);
+        }}
+
+        .sidebar-details-content {{
+            margin: 6px 0 8px 10px;
+            padding-left: 8px;
+            border-left: 1px solid rgba(148, 163, 184, 0.25);
+        }}
+
+        .sidebar-client-name {{
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 12px 0 4px 12px;
+        }}
+
+        .sidebar-sub-link {{
+            font-size: 13px;
+            padding: 8px 12px;
+        }}
+
+        .sidebar hr {{
+            border: 0;
+            border-top: 1px solid rgba(148, 163, 184, 0.25);
+            margin: 18px 0;
+        }}
+
+        .sidebar-link.logout {{
+            color: #fecaca;
+        }}
+
+        .content {{
+            flex: 1;
+            min-width: 0;
+            padding: 30px;
+            box-sizing: border-box;
+        }}
+        </style>
     </head>
+
     <body>
-        <main class="page">
-            <div class="top-menu">
-                <div class="top-menu-links">
-                    {nav_html}
-                </div>
-                <div class="top-menu-logout">
-                    {logout_html}
-                </div>
-            </div>
+        <div class="layout">
 
-            {content}
-        
-<footer class="optaris-footer" style="
-    margin-top:40px;
-    padding:20px;
-    text-align:center;
-    font-size:12px;
-    color:#888;
-    border-top:1px solid rgba(255,255,255,0.10);
-">
-    © Plataforma Optaris ·
-    <a href="/politica-privacidade" style="color:#888; text-decoration:underline;">
-        Política de Privacidade
-    </a>
-</footer>
+            <aside class="sidebar">
+                <div class="sidebar-brand">
+                    <div class="sidebar-logo-box">
+                        <img src="/static/logo.png" alt="Optaris">
+                    </div>
+                    <div>
+                        <div class="sidebar-title">Optaris</div>
+                        <div class="sidebar-subtitle">Delivery Platform</div>
+                    </div>
+                </div>
 
-        </main>
+                {nav_html}
+                <hr>
+                {logout_html}
+            </aside>
+
+            <main class="content">
+                {content}
+            </main>
+
+        </div>
     </body>
     </html>
     """
-
 
 @app.route("/")
 def home():
