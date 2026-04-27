@@ -439,7 +439,7 @@ def get_nav_items():
             ("Auditoria", "/admin/audit"),
             ("Daily", "/daily"),
             ("Histórico Daily", "/daily_history"),
-            ("Registro de Horas", "/"),
+            ("Registro de Horas", "/registro-horas"),
             ("Histórico Horas", "/worklog_history"),
             ("PM View", "/views/pm_view.html"),
             ("Forecast", "/views/pm_forecast_view.html")
@@ -448,9 +448,10 @@ def get_nav_items():
     if role == "internal":
         return [
             ("Clientes", "/admin/clientes"),
+            ("Registro de Horas", "/registro-horas"),
             ("Daily", "/daily"),
             ("Histórico Daily", "/daily_history"),
-            ("Registro de Horas", "/"),
+            ("Registro de Horas", "/registro-horas"),
             ("Histórico Horas", "/worklog_history")
         ]
 
@@ -639,41 +640,12 @@ def logout():
     return redirect("/login")
 
 
-# =========================
-# WORKLOG LOCAL REDIRECTS
-# =========================
-
-def get_worklog_base_url():
-    host = request.host.split(":")[0]
-
-    if host in ["localhost", "127.0.0.1"]:
-        return "http://localhost:8003"
-
-    return ""
 
 
-@app.route("/daily")
-def redirect_daily():
-    base = get_worklog_base_url()
-    if base:
-        return redirect(f"{base}/daily")
-    return redirect("/daily")
 
 
-@app.route("/daily_history")
-def redirect_daily_history():
-    base = get_worklog_base_url()
-    if base:
-        return redirect(f"{base}/daily_history")
-    return redirect("/daily_history")
 
 
-@app.route("/worklog_history")
-def redirect_worklog_history():
-    base = get_worklog_base_url()
-    if base:
-        return redirect(f"{base}/worklog_history")
-    return redirect("/worklog_history")
 
 
 @app.route("/health")
