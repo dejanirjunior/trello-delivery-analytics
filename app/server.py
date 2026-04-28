@@ -466,6 +466,7 @@ def get_nav_groups():
         admin_items = [
             ("Clientes", "/admin/clientes"),
             ("Usuários", "/admin/usuarios"),
+            ("Vínculo Worklog", "/admin/worklog-usuarios"),
             ("Auditoria", "/admin/audit"),
         ]
 
@@ -477,6 +478,7 @@ def get_nav_groups():
             ("Histórico Horas", "/worklog_history"),
         ]
 
+    if role == "admin":
         internal_report_items = [
             ("PM View", "/views/pm_view.html"),
             ("Forecast", "/views/pm_forecast_view.html"),
@@ -500,6 +502,26 @@ def get_nav_items():
 def base_layout(title, content):
     user = get_current_user()
     groups = get_nav_groups()
+
+    body_class = "admin-page" if request.path.startswith("/admin") else ""
+
+    user_label = ""
+    if user:
+        username = user["username"]
+        role = user["role"]
+
+        role_label = {
+            "admin": "Admin",
+            "internal": "Interno",
+            "client": "Cliente"
+        }.get(role, role)
+
+        user_label = f"""
+            <div class="sidebar-user-box">
+                <div class="sidebar-user-name">{username}</div>
+                <div class="sidebar-user-role">{role_label}</div>
+            </div>
+        """
 
     def section(title, items):
         if not items:
@@ -529,8 +551,8 @@ def base_layout(title, content):
 
             client_blocks += f"""
                 <div class="sidebar-client-name">{name}</div>
-                <a class="sidebar-link sidebar-sub-link" href="/clientes/{slug}" target="_blank" rel="noopener noreferrer">Executivo</a>
-                <a class="sidebar-link sidebar-sub-link" href="/clientes/{slug}/dashboard" target="_blank" rel="noopener noreferrer">Dashboard</a>
+                <a class="sidebar-link sidebar-sub-link" href="/views/executive_{slug}.html" target="_blank">Executivo</a>
+                <a class="sidebar-link sidebar-sub-link" href="/views/dashboard_{slug}.html" target="_blank">Dashboard</a>
                 <a class="sidebar-link sidebar-sub-link" href="/weekly/{slug}">Weekly</a>
             """
 
@@ -622,6 +644,31 @@ def base_layout(title, content):
             margin-top: 2px;
         }}
 
+        .sidebar-user-box {{
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin: 0 0 16px 0;
+        }}
+
+        .sidebar-user-name {{
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.2;
+            word-break: break-word;
+        }}
+
+        .sidebar-user-role {{
+            color: #93c5fd;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }}
+
         .sidebar-section-title {{
             font-size: 11px;
             text-transform: uppercase;
@@ -707,7 +754,7 @@ def base_layout(title, content):
         </style>
     </head>
 
-    <body>
+    <body class="{body_class}">
         <div class="layout">
 
             <aside class="sidebar">
@@ -720,6 +767,8 @@ def base_layout(title, content):
                         <div class="sidebar-subtitle">Delivery Platform</div>
                     </div>
                 </div>
+
+                {user_label}
 
                 {nav_html}
                 <hr>
@@ -734,6 +783,137 @@ def base_layout(title, content):
     </body>
     </html>
     """
+
+
+from app.worklog_routes import worklog_bp
+
+app.config["BASE_LAYOUT_FUNC"] = base_layout
+app.register_blueprint(worklog_bp)
+
+
+def get_trello_members_for_worklog():
+    import csv
+
+    csv_path = DATA_DIR / "cards_enriched.csv"
+    members = set()
+
+    if not csv_path.exists():
+        return []
+
+    with open(csv_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            raw = row.get("assigned_members", "") or ""
+            for item in raw.split(","):
+                item = item.strip()
+                if item:
+                    members.add(item)
+
+    return sorted(members)
+
+
+@app.route("/admin/worklog-usuarios", methods=["GET", "POST"])
+def admin_worklog_usuarios():
+    guard = require_login()
+    if guard:
+        return guard
+
+    current_user = get_current_user()
+    if current_user["role"] != "admin":
+        return "Acesso negado", 403
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN worklog_developer_name TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    if request.method == "POST":
+        users = conn.execute("""
+            SELECT id
+            FROM users
+            WHERE role IN ('admin', 'internal')
+            ORDER BY id
+        """).fetchall()
+
+        for user in users:
+            value = request.form.get(f"worklog_developer_name__{user['id']}", "").strip()
+            conn.execute(
+                "UPDATE users SET worklog_developer_name = ? WHERE id = ?",
+                (value if value else None, user["id"])
+            )
+
+        conn.commit()
+        conn.close()
+        return redirect("/admin/worklog-usuarios")
+
+    users = conn.execute("""
+        SELECT id, username, role, active, worklog_developer_name
+        FROM users
+        WHERE role IN ('admin', 'internal')
+        ORDER BY role, username
+    """).fetchall()
+
+    conn.close()
+
+    trello_members = get_trello_members_for_worklog()
+
+    rows_html = ""
+    for user in users:
+        selected_value = user["worklog_developer_name"] or ""
+        options = '<option value="">-- Sem vínculo --</option>'
+
+        for member in trello_members:
+            selected = "selected" if member == selected_value else ""
+            options += f'<option value="{member}" {selected}>{member}</option>'
+
+        active_label = "Ativo" if user["active"] == 1 else "Inativo"
+
+        rows_html += f"""
+            <tr>
+                <td>{user["username"]}</td>
+                <td><code>{user["role"]}</code></td>
+                <td>{active_label}</td>
+                <td>
+                    <select name="worklog_developer_name__{user["id"]}" style="max-width:360px;">
+                        {options}
+                    </select>
+                </td>
+            </tr>
+        """
+
+    return base_layout("Vínculo Worklog · Optaris", f"""
+        <div class="card">
+            <h1>Vínculo Worklog / Trello</h1>
+            <p>Relacione cada usuário interno ao nome que aparece no Trello.</p>
+        </div>
+
+        <div class="card">
+            <form method="POST">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Perfil</th>
+                            <th>Status</th>
+                            <th>Usuário Trello</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+
+                <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                    <button type="submit">Salvar vínculos</button>
+                </div>
+            </form>
+        </div>
+    """)
+
 
 @app.route("/")
 def home():
@@ -1414,8 +1594,10 @@ def admin_audit():
                 <label>Limite de registros</label>
                 <input name="limit" value="{limit}" placeholder="100">
 
-                <button type="submit">Filtrar</button>
-                <a class="btn btn-secondary" href="/admin/audit">Limpar</a>
+                <div class="audit-filter-actions">
+                    <button type="submit" class="audit-filter-button">Filtrar</button>
+                    <a class="audit-clear-button" href="/admin/audit">Limpar</a>
+                </div>
             </form>
         </div>
 

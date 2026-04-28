@@ -1,0 +1,97 @@
+<div class="worklog-page" style="max-width: 1080px; margin: 0 auto;">
+
+    <div class="card worklog-header" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:20px; margin-bottom:16px;">
+        <h1 style="margin:0 0 6px 0; color:#111827;">Histórico de Horas</h1>
+        <p style="margin:0; color:#667085; font-size:14px;">
+            Consulte lançamentos de horas por data, usuário, card e atividade.
+        </p>
+    </div>
+
+    <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; margin-bottom:16px;">
+        <form method="GET" action="{{ url_for('worklog.worklog_history') }}">
+            <div style="display:grid; grid-template-columns: 260px 160px 160px 150px; gap:10px; align-items:start;">
+
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#344054; margin-bottom:5px;">Desenvolvedor</label>
+
+                    {% if role == "admin" %}
+                        <select name="developer_name" style="width:100%; height:40px;">
+                            <option value="">Todos</option>
+                            {% for dev in developers %}
+                                <option value="{{ dev }}" {% if dev == selected_dev %}selected{% endif %}>{{ dev }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input type="hidden" name="developer_name" value="{{ selected_dev }}">
+                        <div style="height:40px; display:flex; align-items:center; background:#f9fafb; border:1px solid #d0d5dd; border-radius:8px; padding:0 10px; color:#111827;">
+                            {{ selected_dev }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#344054; margin-bottom:5px;">Data inicial</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" style="width:100%; height:40px;">
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#344054; margin-bottom:5px;">Data final</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" style="width:100%; height:40px;">
+                </div>
+
+                <div style="display:flex; gap:8px; align-items:flex-end; height:100%;">
+                    <button type="submit" style="height:40px; background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:0 14px; font-size:13px; font-weight:800; cursor:pointer;">
+                        Aplicar
+                    </button>
+
+                    <a href="{{ url_for('worklog.worklog_history') }}" style="height:40px; background:#475467; color:#ffffff; border-radius:10px; padding:0 14px; font-size:13px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center;">
+                        Limpar
+                    </a>
+                </div>
+
+            </div>
+        </form>
+    </div>
+
+    <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; margin-bottom:16px;">
+        <div style="font-size:13px; color:#667085;">Total de horas no período</div>
+        <div style="font-size:28px; font-weight:900; color:#111827;">{{ total_hours }}h</div>
+    </div>
+
+    {% if worklogs %}
+    <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:0; overflow:hidden;">
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+                <tr style="background:#f8fafc; color:#111827;">
+                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Data</th>
+                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Dev</th>
+                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Card</th>
+                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Horas</th>
+                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Atividade</th>
+                    <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Comentário</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in worklogs %}
+                <tr>
+                    <td style="padding:10px; border-bottom:1px solid #eef2f7; color:#111827;">{{ row.work_date }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eef2f7; color:#111827;">{{ row.developer_name }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eef2f7; color:#111827;">{{ row.card_name }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eef2f7; color:#111827;">{{ row.hours }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eef2f7; color:#111827;">{{ row.activity_type }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #eef2f7; color:#111827;">{{ row.comment }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px;">
+            <div style="color:#111827; font-weight:800;">Nenhum lançamento encontrado</div>
+            <div style="color:#667085; font-size:13px; margin-top:4px;">
+                Ajuste os filtros ou registre novas horas.
+            </div>
+        </div>
+    {% endif %}
+
+</div>

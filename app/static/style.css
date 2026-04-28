@@ -197,3 +197,393 @@ code {
     color: var(--danger);
     font-weight: 700;
 }
+
+
+/* =========================
+   Dark background contrast fixes
+   ========================= */
+
+.card[style*="background:#0f172a"],
+.card[style*="background: #0f172a"],
+.card[style*="background:#111827"],
+.card[style*="background: #111827"],
+.card[style*="background:#1e3a8a"],
+.card[style*="background: #1e3a8a"],
+.card[style*="background:#1d4ed8"],
+.card[style*="background: #1d4ed8"],
+.card[style*="background:#2563eb"],
+.card[style*="background: #2563eb"],
+.card[style*="background:linear-gradient"],
+.card[style*="background: linear-gradient"] {
+    color: #ffffff !important;
+}
+
+.card[style*="background:#0f172a"] *,
+.card[style*="background: #0f172a"] *,
+.card[style*="background:#111827"] *,
+.card[style*="background: #111827"] *,
+.card[style*="background:#1e3a8a"] *,
+.card[style*="background: #1e3a8a"] *,
+.card[style*="background:#1d4ed8"] *,
+.card[style*="background: #1d4ed8"] *,
+.card[style*="background:#2563eb"] *,
+.card[style*="background: #2563eb"] *,
+.card[style*="background:linear-gradient"] *,
+.card[style*="background: linear-gradient"] * {
+    color: #ffffff !important;
+}
+
+.card[style*="background:#0f172a"] a,
+.card[style*="background:#111827"] a,
+.card[style*="background:#1e3a8a"] a,
+.card[style*="background:#1d4ed8"] a,
+.card[style*="background:#2563eb"] a {
+    color: #ffffff !important;
+}
+
+/* Badges/códigos dentro de cards escuros */
+.card[style*="background:#0f172a"] code,
+.card[style*="background:#111827"] code,
+.card[style*="background:#1e3a8a"] code,
+.card[style*="background:#1d4ed8"] code,
+.card[style*="background:#2563eb"] code {
+    background: rgba(255,255,255,0.16) !important;
+    color: #ffffff !important;
+}
+
+/* Títulos e labels em áreas administrativas */
+.admin-card-dark,
+.admin-card-dark *,
+.audit-card-dark,
+.audit-card-dark * {
+    color: #ffffff !important;
+}
+
+.admin-card-dark code,
+.audit-card-dark code {
+    background: rgba(255,255,255,0.16) !important;
+    color: #ffffff !important;
+}
+
+/* =========================
+   ADMIN PAGES — FINAL CONTRAST FIX
+   Applies only to /admin/*
+   ========================= */
+
+body.admin-page .content .card {
+    background: #111827 !important;
+    border: 1px solid #243044 !important;
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card *,
+body.admin-page .content .card h1,
+body.admin-page .content .card h2,
+body.admin-page .content .card h3,
+body.admin-page .content .card p,
+body.admin-page .content .card div,
+body.admin-page .content .card span,
+body.admin-page .content .card label,
+body.admin-page .content .card td,
+body.admin-page .content .card strong {
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card .muted,
+body.admin-page .content .card .subtitle,
+body.admin-page .content .card small {
+    color: #cbd5e1 !important;
+}
+
+body.admin-page .content .card th,
+body.admin-page .content .card .eyebrow {
+    color: #facc15 !important;
+    font-weight: 800 !important;
+}
+
+body.admin-page .content .card code {
+    background: rgba(255,255,255,0.14) !important;
+    color: #ffffff !important;
+    border-radius: 6px;
+    padding: 2px 6px;
+}
+
+body.admin-page .content .card input,
+body.admin-page .content .card select,
+body.admin-page .content .card textarea {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+body.admin-page .content .card input::placeholder,
+body.admin-page .content .card textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+body.admin-page .content .card option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card table {
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card table tr {
+    border-color: #243044 !important;
+}
+
+body.admin-page .content .card table td,
+body.admin-page .content .card table th {
+    border-color: #243044 !important;
+}
+
+body.admin-page .content .card a:not(.btn):not(.btn-primary):not(.btn-secondary) {
+    color: #93c5fd !important;
+}
+
+body.admin-page .content .card button,
+body.admin-page .content .card .btn,
+body.admin-page .content .card .btn-primary,
+body.admin-page .content .card .btn-secondary {
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card input[type="checkbox"] {
+    accent-color: #2563eb;
+}
+
+/* =========================
+   NON-ADMIN LIGHT CARD FIX
+   ========================= */
+
+body:not(.admin-page) .content .card {
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .card h1,
+body:not(.admin-page) .content .card h2,
+body:not(.admin-page) .content .card h3,
+body:not(.admin-page) .content .card p,
+body:not(.admin-page) .content .card div,
+body:not(.admin-page) .content .card span,
+body:not(.admin-page) .content .card label,
+body:not(.admin-page) .content .card td,
+body:not(.admin-page) .content .card th,
+body:not(.admin-page) .content .card strong {
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .card .subtitle,
+body:not(.admin-page) .content .card .muted {
+    color: #667085 !important;
+}
+
+body:not(.admin-page) .content .card input,
+body:not(.admin-page) .content .card select,
+body:not(.admin-page) .content .card textarea {
+    color: #111827 !important;
+    background: #ffffff !important;
+}
+
+body:not(.admin-page) .content .card button,
+body:not(.admin-page) .content .card .btn,
+body:not(.admin-page) .content .card .btn-primary,
+body:not(.admin-page) .content .card .btn-secondary {
+    color: #ffffff !important;
+}
+
+body:not(.admin-page) .content .card a {
+    color: #1d4ed8 !important;
+}
+
+/* =========================
+   FINAL ADMIN BUTTON FIX
+   ========================= */
+
+body.admin-page .content .card button,
+body.admin-page .content .card input[type="submit"],
+body.admin-page .content .card .btn,
+body.admin-page .content .card .btn-primary {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: 1px solid #2563eb !important;
+    border-radius: 10px !important;
+    padding: 9px 14px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+}
+
+body.admin-page .content .card .btn-secondary,
+body.admin-page .content .card a.btn-secondary {
+    background: #334155 !important;
+    color: #ffffff !important;
+    border: 1px solid #475569 !important;
+}
+
+body.admin-page .content .card button:hover,
+body.admin-page .content .card input[type="submit"]:hover,
+body.admin-page .content .card .btn:hover {
+    filter: brightness(1.08);
+}
+
+
+/* =========================
+   WORKLOG / DAILY SECTION THEME
+   ========================= */
+
+body:not(.admin-page) .content .worklog-page {
+    max-width: 1080px;
+}
+
+body:not(.admin-page) .content .worklog-page .worklog-header {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .worklog-page .worklog-header * {
+    color: inherit !important;
+}
+
+body:not(.admin-page) .content .worklog-page .worklog-header p,
+body:not(.admin-page) .content .worklog-page .worklog-header .subtitle {
+    color: #667085 !important;
+}
+
+/* Demais cards viram seções escuras */
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) {
+    background: #111827 !important;
+    border: 1px solid #243044 !important;
+    color: #ffffff !important;
+}
+
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) *,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) h1,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) h2,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) h3,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) label,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) p,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) div,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) span,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) td,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) strong {
+    color: #ffffff !important;
+}
+
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) th,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) .section-title {
+    color: #facc15 !important;
+    font-weight: 900 !important;
+}
+
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) .muted,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) .subtitle {
+    color: #cbd5e1 !important;
+}
+
+/* Inputs/selects dentro das seções escuras */
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) input,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) select,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) textarea {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) input::placeholder,
+body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Cards internos da Daily/Worklog */
+body:not(.admin-page) .content .worklog-page .daily-card,
+body:not(.admin-page) .content .worklog-page .worklog-card,
+body:not(.admin-page) .content .worklog-page .card-pick {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #ffffff !important;
+}
+
+body:not(.admin-page) .content .worklog-page .daily-card *,
+body:not(.admin-page) .content .worklog-page .worklog-card *,
+body:not(.admin-page) .content .worklog-page .card-pick * {
+    color: #ffffff !important;
+}
+
+/* Tabelas dentro do Worklog */
+body:not(.admin-page) .content .worklog-page table {
+    background: #111827 !important;
+    color: #ffffff !important;
+}
+
+body:not(.admin-page) .content .worklog-page table th {
+    background: #1e293b !important;
+    color: #facc15 !important;
+}
+
+body:not(.admin-page) .content .worklog-page table td {
+    background: #111827 !important;
+    color: #ffffff !important;
+    border-color: #243044 !important;
+}
+
+/* Botões nas seções escuras */
+body:not(.admin-page) .content .worklog-page button,
+body:not(.admin-page) .content .worklog-page input[type="submit"] {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: 1px solid #2563eb !important;
+}
+
+body:not(.admin-page) .content .worklog-page a {
+    color: #93c5fd !important;
+}
+
+
+/* =========================
+   AUDIT FILTER ACTIONS - DEFINITIVE
+   ========================= */
+
+body.admin-page .audit-filter-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+    height: 40px !important;
+}
+
+body.admin-page .audit-filter-actions .audit-filter-button,
+body.admin-page .audit-filter-actions .audit-clear-button {
+    box-sizing: border-box !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 14px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-decoration: none !important;
+    vertical-align: top !important;
+}
+
+body.admin-page .audit-filter-actions .audit-filter-button {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: 1px solid #2563eb !important;
+}
+
+body.admin-page .audit-filter-actions .audit-clear-button {
+    background: #334155 !important;
+    color: #ffffff !important;
+    border: 1px solid #475569 !important;
+}

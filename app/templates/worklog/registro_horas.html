@@ -1,0 +1,297 @@
+<div class="worklog-page" style="max-width: 980px; margin: 0 auto;">
+
+    <div class="card worklog-header" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:20px; margin-bottom:16px;">
+        <h1 style="margin:0 0 6px 0; color:#111827;">Registro de Horas</h1>
+        <p style="margin:0; color:#667085; font-size:14px;">
+            Lance horas por card. Quando existir Daily salva no dia, os cards vêm dela; caso contrário, usamos a sugestão automática.
+        </p>
+    </div>
+
+    <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; margin-bottom:16px;">
+        <form method="GET" action="{{ url_for('worklog.index') }}">
+            <div style="display:grid; grid-template-columns: 170px 280px 120px; gap:12px; align-items:start;">
+                <div>
+                    <label style="display:block; font-weight:700; color:#344054; font-size:13px; margin-bottom:5px;">Data</label>
+                    <input type="date" name="work_date" value="{{ today }}" style="width:100%;">
+                </div>
+
+                <div>
+                    <label style="display:block; font-weight:700; color:#344054; font-size:13px; margin-bottom:5px;">Desenvolvedor</label>
+
+                    {% if role == "admin" %}
+                        <select name="developer_name" style="width:100%;">
+                            <option value="">Selecione</option>
+                            {% for dev in developers %}
+                                <option value="{{ dev }}" {% if dev == selected_dev %}selected{% endif %}>{{ dev }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input type="hidden" name="developer_name" value="{{ selected_dev }}">
+                        <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:9px 10px; color:#111827;">
+                            {{ selected_dev or 'Usuário sem vínculo Worklog' }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div style="display:flex; align-items:flex-end; height:100%;">
+                    <button type="submit" style="height:40px; background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:0 14px; font-size:13px; font-weight:800; line-height:40px; cursor:pointer;">
+                        Carregar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if not selected_dev %}
+    <div class="card" style="background:#fff7ed; border:1px solid #fed7aa; border-radius:16px; padding:18px; color:#9a3412;">
+        Nenhum desenvolvedor selecionado/vinculado. Configure o vínculo em <strong>Administração → Vínculo Worklog</strong>.
+    </div>
+    {% endif %}
+
+    {% if selected_dev %}
+    <form method="POST" action="{{ url_for('worklog.save_worklog_batch') }}">
+        <input type="hidden" name="work_date" value="{{ today }}">
+        <input type="hidden" name="developer_name" value="{{ selected_dev }}">
+
+        <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px;">
+                <div>
+                    <h2 style="margin:0; color:#111827; font-size:20px;">Cards para lançamento</h2>
+                    <p style="margin:4px 0 0 0; color:#667085; font-size:13px;">
+                        {% if suggestion_source == "daily_saved" %}
+                            Baseado na Daily salva de {{ today }}.
+                        {% else %}
+                            Nenhuma Daily salva encontrada. Usando sugestão automática.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div id="selected-card-list">
+                {% for card in suggested_cards %}
+                <div class="worklog-card" data-card-id="{{ card.card_id }}" style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:14px; padding:12px; margin-bottom:10px;">
+                    <label style="display:grid; grid-template-columns: 24px 1fr; gap:10px; align-items:flex-start; color:#111827;">
+                        <input
+                            type="checkbox"
+                            class="worklog-checkbox"
+                            name="selected_cards"
+                            value="{{ card.card_id }}"
+                            checked
+                            style="width:16px; height:16px; margin-top:3px;"
+                        >
+
+                        <div>
+                            <input type="hidden" name="card_name__{{ card.card_id }}" value="{{ card.card_name }}">
+                            <input type="hidden" name="estimated_flag__{{ card.card_id }}" value="1">
+
+                            <div style="font-weight:800; color:#111827; font-size:14px;">
+                                {{ card.card_name }}
+                            </div>
+
+                            <div style="font-size:12px; color:#667085; margin-top:3px;">
+                                {{ card.client_name or '-' }} · {{ card.lista or '-' }} · {{ card.source_type or 'daily' }}
+                            </div>
+
+                            {% if card.reason_text %}
+                            <div style="font-size:12px; color:#475467; margin-top:5px;">
+                                {{ card.reason_text }}
+                            </div>
+                            {% endif %}
+
+                            {% if card.has_block_label %}
+                            <div style="font-size:12px; color:#b42318; font-weight:700; margin-top:5px;">
+                                🚫 BLOCK no Trello
+                            </div>
+                            {% endif %}
+
+                            <div class="worklog-fields" style="display:grid; grid-template-columns: 100px 170px 1fr; gap:10px; margin-top:10px; align-items:start;">
+                                <div>
+                                    <label style="font-size:12px; color:#344054; font-weight:700;">Horas</label>
+                                    <input type="number" name="hours__{{ card.card_id }}" min="0.25" step="0.25" placeholder="0" style="width:100%;">
+                                </div>
+
+                                <div>
+                                    <label style="font-size:12px; color:#344054; font-weight:700;">Atividade</label>
+                                    <select name="activity_type__{{ card.card_id }}" style="width:100%;">
+                                        <option value="">Selecione</option>
+                                        <option value="desenvolvimento">Desenvolvimento</option>
+                                        <option value="qa">QA</option>
+                                        <option value="uat">UAT</option>
+                                        <option value="suporte">Suporte</option>
+                                        <option value="planejamento">Planejamento</option>
+                                        <option value="refinamento">Refinamento</option>
+                                        <option value="reuniao">Reunião</option>
+                                        <option value="documentacao">Documentação</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="font-size:12px; color:#344054; font-weight:700;">Comentário</label>
+                                    <textarea name="comment__{{ card.card_id }}" placeholder="Descreva o trabalho realizado..." style="width:100%; min-height:42px;">{{ card.existing_comment or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="background:#ffffff; border:1px dashed #cbd5e1; border-radius:14px; padding:14px; margin-top:14px;">
+                <div style="font-weight:800; color:#111827; margin-bottom:8px;">Adicionar outro card</div>
+
+                <div style="display:grid; grid-template-columns: minmax(260px, 1fr) 130px; gap:10px; align-items:end;">
+                    <div>
+                        <label style="display:block; color:#344054; font-size:12px; font-weight:700; margin-bottom:5px;">Card</label>
+                        <select id="extra-card-select" style="width:100%;">
+                            <option value="">Selecione</option>
+                            {% for card in additional_cards %}
+                                <option value="{{ card.card_id }}|{{ card.card_name }}|{{ card.client_name }}|{{ card.lista }}|{{ card.has_block_label }}">
+                                    {{ card.client_name or '-' }} · {{ card.lista or '-' }} · {{ card.card_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="button" id="add-card-button" style="background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:10px 14px; position:relative; top:-8px; font-weight:800; cursor:pointer;">
+                        Adicionar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end;">
+            <button type="submit" style="background:#2563eb; color:#ffffff; border:none; border-radius:12px; padding:12px 20px; font-weight:800; cursor:pointer;">
+                Salvar lançamentos
+            </button>
+        </div>
+    </form>
+
+    <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; margin-top:16px;">
+        <h2 style="margin:0 0 10px 0; color:#111827; font-size:20px;">Lançamentos do dia</h2>
+        <p style="color:#667085; margin-top:0;">Total: <strong>{{ total_hours }}h</strong></p>
+
+        {% if worklogs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Card</th>
+                    <th>Horas</th>
+                    <th>Atividade</th>
+                    <th>Comentário</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in worklogs %}
+                <tr>
+                    <td>{{ row.card_name }}</td>
+                    <td>{{ row.hours }}</td>
+                    <td>{{ row.activity_type }}</td>
+                    <td>{{ row.comment }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p style="color:#667085;">Nenhum lançamento registrado para esta data.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function syncWorklogCard(card) {
+    const checkbox = card.querySelector(".worklog-checkbox");
+    const fields = card.querySelector(".worklog-fields");
+
+    if (fields && checkbox) {
+        fields.style.display = checkbox.checked ? "grid" : "none";
+    }
+}
+
+document.querySelectorAll(".worklog-card").forEach(function(card) {
+    const checkbox = card.querySelector(".worklog-checkbox");
+    if (checkbox) {
+        checkbox.addEventListener("change", function() {
+            syncWorklogCard(card);
+        });
+    }
+    syncWorklogCard(card);
+});
+
+document.getElementById("add-card-button")?.addEventListener("click", function() {
+    const select = document.getElementById("extra-card-select");
+    const list = document.getElementById("selected-card-list");
+    const value = select.value;
+
+    if (!value) return;
+
+    const parts = value.split("|");
+    const cardId = parts[0] || "";
+    const cardName = parts[1] || "";
+    const clientName = parts[2] || "";
+    const lista = parts[3] || "";
+    const hasBlock = parts[4] || "0";
+
+    if (!cardId || list.querySelector('[data-card-id="' + cardId + '"]')) {
+        return;
+    }
+
+    const div = document.createElement("div");
+    div.className = "worklog-card";
+    div.dataset.cardId = cardId;
+    div.style.cssText = "background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin-bottom:10px;";
+
+    div.innerHTML = `
+        <label style="display:grid; grid-template-columns: 24px 1fr; gap:10px; align-items:flex-start; color:#111827;">
+            <input type="checkbox" class="worklog-checkbox" name="selected_cards" value="${cardId}" checked style="width:16px;height:16px;margin-top:3px;">
+
+            <div>
+                <input type="hidden" name="card_name__${cardId}" value="${cardName}">
+                <input type="hidden" name="estimated_flag__${cardId}" value="1">
+
+                <div style="font-weight:800;color:#111827;font-size:14px;">${cardName}</div>
+                <div style="font-size:12px;color:#667085;margin-top:3px;">${clientName || "-"} · ${lista || "-"} · manual</div>
+
+                ${hasBlock === "1" ? '<div style="font-size:12px;color:#b42318;font-weight:700;margin-top:5px;">🚫 BLOCK no Trello</div>' : ""}
+
+                <div class="worklog-fields" style="display:grid; grid-template-columns: 100px 170px 1fr; gap:10px; margin-top:10px; align-items:start;">
+                    <div>
+                        <label style="font-size:12px;color:#344054;font-weight:700;">Horas</label>
+                        <input type="number" name="hours__${cardId}" min="0.25" step="0.25" placeholder="0" style="width:100%;">
+                    </div>
+
+                    <div>
+                        <label style="font-size:12px;color:#344054;font-weight:700;">Atividade</label>
+                        <select name="activity_type__${cardId}" style="width:100%;">
+                            <option value="">Selecione</option>
+                            <option value="desenvolvimento">Desenvolvimento</option>
+                            <option value="qa">QA</option>
+                            <option value="uat">UAT</option>
+                            <option value="suporte">Suporte</option>
+                            <option value="planejamento">Planejamento</option>
+                            <option value="refinamento">Refinamento</option>
+                            <option value="reuniao">Reunião</option>
+                            <option value="documentacao">Documentação</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="font-size:12px;color:#344054;font-weight:700;">Comentário</label>
+                        <textarea name="comment__${cardId}" placeholder="Descreva o trabalho realizado..." style="width:100%;min-height:42px;"></textarea>
+                    </div>
+                </div>
+            </div>
+        </label>
+    `;
+
+    list.appendChild(div);
+
+    const checkbox = div.querySelector(".worklog-checkbox");
+    checkbox.addEventListener("change", function() {
+        syncWorklogCard(div);
+    });
+
+    syncWorklogCard(div);
+    select.value = "";
+});
+</script>

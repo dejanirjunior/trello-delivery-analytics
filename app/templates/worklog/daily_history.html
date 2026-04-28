@@ -1,0 +1,125 @@
+<div style="max-width:1080px; margin:0 auto; color:#111827;">
+
+    <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:20px; margin-bottom:16px; color:#111827;">
+        <h1 style="margin:0 0 6px 0; color:#111827;">Histórico da Daily</h1>
+        <p style="margin:0; color:#667085; font-size:14px;">
+            Consulte as dailies salvas, seus cards planejados, bloqueios e observações.
+        </p>
+    </div>
+
+    <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; margin-bottom:16px; color:#111827;">
+        <form method="GET" action="{{ url_for('worklog.daily_history') }}">
+            <div style="display:grid; grid-template-columns:260px 160px 160px auto; gap:10px; align-items:end;">
+
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#344054; margin-bottom:5px;">Desenvolvedor</label>
+
+                    {% if role == "admin" %}
+                        <select name="developer_name" style="width:100%; height:40px; color:#111827; background:#ffffff; border:1px solid #d0d5dd; border-radius:8px;">
+                            <option value="">Todos</option>
+                            {% for dev in developers %}
+                                <option value="{{ dev }}" {% if dev == selected_dev %}selected{% endif %}>{{ dev }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input type="hidden" name="developer_name" value="{{ selected_dev }}">
+                        <div style="height:40px; display:flex; align-items:center; background:#f9fafb; border:1px solid #d0d5dd; border-radius:8px; padding:0 10px; color:#111827;">
+                            {{ selected_dev }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#344054; margin-bottom:5px;">Data inicial</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" style="width:100%; height:40px; color:#111827; background:#ffffff; border:1px solid #d0d5dd; border-radius:8px;">
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#344054; margin-bottom:5px;">Data final</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" style="width:100%; height:40px; color:#111827; background:#ffffff; border:1px solid #d0d5dd; border-radius:8px;">
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" style="height:40px; background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:0 14px; font-size:13px; font-weight:800;">
+                        Aplicar
+                    </button>
+
+                    <a href="{{ url_for('worklog.daily_history') }}" style="height:40px; background:#475467; color:#ffffff; border-radius:10px; padding:0 14px; font-size:13px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center;">
+                        Limpar
+                    </a>
+                </div>
+
+            </div>
+        </form>
+    </div>
+
+    {% if history %}
+        {% for row in history %}
+        <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; margin-bottom:14px; color:#111827;">
+
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px;">
+                <div>
+                    <div style="font-size:18px; font-weight:800; color:#111827;">{{ row.developer_name }}</div>
+                    <div style="font-size:13px; color:#667085;">Criado em {{ row.created_at }}</div>
+                </div>
+
+                <div style="background:#eef4ff; border:1px solid #d7e3ff; color:#355070; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:800;">
+                    {{ row.daily_date_br }}
+                </div>
+            </div>
+
+            {% if row.notes %}
+            <div style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:12px; color:#111827;">
+                <div style="font-size:13px; font-weight:800; color:#111827; margin-bottom:4px;">Observações</div>
+                <div style="font-size:13px; color:#344054;">{{ row.notes }}</div>
+            </div>
+            {% endif %}
+
+            {% if row.absence_type or row.absence_detail %}
+            <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px; margin-bottom:12px;">
+                <div style="font-size:13px; font-weight:800; color:#9a3412; margin-bottom:4px;">Ausência / indisponibilidade</div>
+                <div style="font-size:13px; color:#9a3412;">{{ row.absence_type }} {{ row.absence_detail }}</div>
+            </div>
+            {% endif %}
+
+            <div style="font-size:13px; font-weight:800; color:#111827; margin-bottom:8px;">Cards planejados</div>
+
+            {% if row.plan_cards %}
+                <div style="display:grid; gap:8px;">
+                    {% for card in row.plan_cards %}
+                    <div style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px; color:#111827;">
+                        <div style="font-size:14px; font-weight:800; color:#111827;">{{ card.card_name }}</div>
+
+                        <div style="font-size:12px; color:#667085; margin-top:3px;">
+                            Cliente: {{ card.client_name or '-' }} · Origem: {{ card.source_type or '-' }}
+                        </div>
+
+                        {% if card.blocker_text %}
+                        <div style="font-size:12px; color:#92400e; margin-top:6px;">
+                            <strong style="color:#92400e;">Observação/Bloqueio:</strong> {{ card.blocker_text }}
+                        </div>
+                        {% endif %}
+
+                        {% if card.needs_block_label_mark %}
+                        <div style="font-size:12px; color:#b42318; font-weight:800; margin-top:6px;">
+                            Marcar BLOCK no Trello
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div style="font-size:13px; color:#667085;">Nenhum card registrado nesta daily.</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; color:#111827;">
+            <div style="color:#111827; font-weight:800;">Nenhuma daily encontrada</div>
+            <div style="color:#667085; font-size:13px; margin-top:4px;">
+                Ajuste os filtros ou registre uma nova daily.
+            </div>
+        </div>
+    {% endif %}
+
+</div>
