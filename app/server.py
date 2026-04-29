@@ -467,6 +467,7 @@ def get_nav_groups():
             ("Clientes", "/admin/clientes"),
             ("Usuários", "/admin/usuarios"),
             ("Vínculo Worklog", "/admin/worklog-usuarios"),
+            ("Custo de Projetos", "/admin/project-costs"),
             ("Auditoria", "/admin/audit"),
         ]
 
@@ -875,6 +876,9 @@ from app.worklog_routes import worklog_bp
 
 app.config["BASE_LAYOUT_FUNC"] = base_layout
 app.register_blueprint(worklog_bp)
+
+from app.project_cost_routes import project_cost_bp
+app.register_blueprint(project_cost_bp)
 
 
 def get_trello_members_for_worklog():
