@@ -1,5 +1,22 @@
 #!/bin/bash
 
+LOCKFILE="/tmp/trello_pipeline.lock"
+
+if [ -f "$LOCKFILE" ]; then
+  echo "Pipeline já está rodando. Abortando."
+  exit 1
+fi
+
+touch $LOCKFILE
+
+cd /home/ubuntu/apps/trello-dashboard
+
+python3 app/main.py
+
+rm -f $LOCKFILE
+
+#!/bin/bash
+
 echo "===================================="
 echo "Pipeline iniciado em: $(date)"
 echo "===================================="
