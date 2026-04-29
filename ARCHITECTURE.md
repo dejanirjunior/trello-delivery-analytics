@@ -1,296 +1,178 @@
-# Trello Dashboard - Architecture
+# Architecture — Trello Dashboard + Worklog
 
-## 1. Visão Geral
+## 1. Status
 
-Sistema web para acompanhamento de projetos baseado em dados do Trello, com foco em visibilidade para clientes, gerentes de projeto, área interna e diretoria.
-
-O ambiente atual está publicado em uma instância AWS EC2 com Ubuntu, usando Docker para separar os serviços principais e Nginx como reverse proxy.
+Sistema Flask unificado em produção no container `trello-dashboard-container`.
 
 ## 2. Infraestrutura
 
-### Ambiente
+- Host: AWS Lightsail / Ubuntu
+- Projeto: `/home/ubuntu/apps/trello-dashboard`
+- Domínio: `https://app.optarisbrasil.com`
+- Proxy: Nginx
+- Porta host: `8001`
+- Porta container: `8000`
 
-- Cloud: AWS EC2
-- Sistema operacional: Ubuntu 24.04 LTS
-- Usuário SSH: ubuntu
-- IP público atual: 18.208.210.2
-- Domínio principal: app.optarisbrasil.com
-- Acesso remoto: VS Code Remote SSH
+## 3. Componentes
 
-### Diretório base
+- Flask + Gunicorn
+- Docker Compose
+- SQLite
+- Nginx
+- Trello API
+- HTML estático gerado em `/data`
 
-```text
-/home/ubuntu/apps/
-Projetos existentes
-/home/ubuntu/apps/
-├── trello-dashboard
-├── trello-dashboard-backup
-├── worklog-analytics
-├── worklog-analytics_backup
-├── trello-dashboard.tar.gz
-└── worklog-analytics.tar.gz
-3. Serviços e Containers
-trello-dashboard
+## 4. Módulos
 
-Aplicação principal do portal e dashboards baseados no Trello.
+- Dashboard Trello
+- Portal de clientes
+- Kanban
+- Forecast Monte Carlo
+- Worklog
+- Daily
+- Histórico de horas
+- Histórico da Daily
+- Administração
+- Auditoria
 
-Container: trello-dashboard-container
-Porta externa no host: 8001
-Porta interna provável: 8000
-Diretório: /home/ubuntu/apps/trello-dashboard
-worklog-analytics
+## 5. Bancos
 
-Aplicação complementar para controle de worklogs, apontamentos, planejamento diário e análises internas.
+### Auth
 
-Container: worklog-analytics-container
-Porta externa no host: 8003
-Diretório: /home/ubuntu/apps/worklog-analytics
-4. Separação Conceitual dos Sistemas
-trello-dashboard
+Container: `/data/auth.db`  
+Volume Docker: `trello_auth_data`
 
-Responsável por:
+Campo crítico:
 
-Coletar ou consumir dados do Trello
-Gerar visões de Kanban
-Gerar dashboards por cliente
-Gerar visões para PMs, diretoria e clientes
-Publicar páginas HTML ou rotas web
-Exibir métricas de fluxo, status e acompanhamento de projetos
-worklog-analytics
+`users.worklog_developer_name`
 
-Responsável por:
+### Worklog
 
-Registrar apontamentos de horas
-Apoiar planejamento diário
-Relacionar desenvolvedores, cards e atividades
-Validar esforço, horas e possíveis desvios
-Complementar a visão gerencial do Trello Dashboard
-5. Fluxo Geral de Dados
-Trello API
-   ↓
-Scripts Python de coleta/processamento
-   ↓
-Arquivos JSON/CSV internos
-   ↓
-Dashboards / HTML / Flask / Dash
-   ↓
-Cliente, PM, área interna e diretoria
-6. Perfis de Usuário e Visibilidade
-Admin
+Host:
 
-Acesso esperado:
+`/home/ubuntu/apps/trello-dashboard/data/worklog.db`
 
-Todas as visões
-Configurações
-Cadastro de clientes
-Gestão de permissões
-Dados internos e externos
-Métricas consolidadas
-Internals / PMs
+Container:
 
-Acesso esperado:
+`/app/data/worklog.db`
 
-Visão operacional
-Cards por status
-Worklogs
-Alertas
-Bloqueios
-Riscos
-Métricas de fluxo
-Planejamento semanal e diário
-Clientes
+Tabelas:
 
-Acesso esperado:
+- `worklogs`
+- `daily_plan`
+- `daily_plan_items`
 
-Portal do próprio cliente
-Kanban filtrado por cliente
-Dashboard do cliente
-Status report
-Indicadores de progresso
-Bloqueios e pendências relevantes
-Itens entregues, em andamento e planejados
+## 6. Rotas principais
 
-Clientes não devem visualizar dados de outros clientes.
+- `/login`
+- `/logout`
+- `/admin/clientes`
+- `/admin/usuarios`
+- `/admin/worklog-usuarios`
+- `/admin/audit`
+- `/daily`
+- `/registro-horas`
+- `/daily_history`
+- `/worklog_history`
+- `/trello/update`
 
-7. Identificação de Clientes
+## 7. Pipeline Trello
 
-Atualmente, a identificação do cliente está relacionada aos rótulos dos cards no Trello.
+Endpoint:
 
-Atenção: nem todo rótulo deve ser tratado como cliente.
+`POST /trello/update`
 
-Regra recomendada:
+Executa:
 
-Criar uma configuração explícita de clientes
-O sistema só deve gerar portal de cliente para rótulos cadastrados como cliente
-A interface administrativa deve permitir cadastrar cliente, nome de exibição, rótulo Trello, permissões e URLs geradas
-8. Views Esperadas
+`python3 app/main.py`
 
-Exemplos de views existentes ou planejadas:
+Gera:
 
-Cliente
-Portal do cliente
-Kanban do cliente
-Dashboard do cliente
-Status report
-Visão semanal
-PM / Interno
-Visão operacional
-Cards por status
-Itens bloqueados
-Alertas de prazo
-Worklogs
-Métricas de fluxo
-Planejamento diário/semanal
-Diretoria
-Visão consolidada
-Indicadores executivos
-Entregas por cliente
-Gargalos
-Capacidade
-Forecast
-Tendência de fluxo
-9. Rotas e URLs
+- `cards_enriched.csv`
+- datasets Kanban
+- dashboards HTML
+- forecast Monte Carlo
+- portais de clientes
 
-As rotas precisam ser documentadas e validadas diretamente no código Flask/Dash.
+## 8. Regras de negócio
 
-Comandos úteis para localizar rotas:
+### Daily
 
-cd ~/apps/trello-dashboard
-grep -R "@app.route\|Blueprint\|register_blueprint\|weekly\|kanban\|dashboard" -n . --exclude-dir=.git --exclude-dir=__pycache__
+A Daily sugere cards automaticamente usando score interno baseado em:
 
-Testes locais:
+- responsável no Trello
+- status/lista
+- prioridade
+- risco
+- vencimento
+- data compromisso
+- histórico recente
+- bloqueios
+- estimativas
 
-curl -I http://localhost:8001/
-curl -I http://localhost:8001/kanban
-curl -I http://localhost:8001/dashboard
-curl -I http://localhost:8001/weekly
+O score continua sendo calculado, mas não é exibido ao usuário.
 
-Testes pelo domínio:
+### Registro de horas
 
-curl -I https://app.optarisbrasil.com/
-10. Nginx
+Se existir Daily salva no dia, os cards vêm dela. Caso contrário, o sistema usa sugestão automática.
 
-O Nginx atua como reverse proxy entre o domínio público e os containers.
+### Usuários
 
-Cuidados:
+Perfis:
 
-Conferir se o domínio aponta para o IP correto
-Conferir se o proxy_pass aponta para a porta correta
-Conferir se autenticação básica está ativa ou não
-Conferir se arquivos estáticos estão sendo servidos corretamente
-Sempre testar configuração antes de recarregar
+- `admin`
+- `internal`
+- `client`
 
-Comandos úteis:
+`admin` acessa administração, auditoria e vínculos.  
+`internal` acessa operação Worklog/Daily.  
+`client` acessa apenas relatórios permitidos.
 
-sudo nginx -t
-sudo systemctl reload nginx
-sudo systemctl status nginx
+## 9. Correções recentes
 
-Logs úteis:
+- Worklog migrado para dentro do Trello Dashboard
+- `/trello/update` corrigido para retornar JSON
+- `/` corrigido para redirecionar corretamente
+- Auditoria/Admin com contraste corrigido
+- Score removido da exibição da Daily
+- Histórico da Daily ajustado visualmente
 
-sudo tail -n 100 /var/log/nginx/access.log
-sudo tail -n 100 /var/log/nginx/error.log
-11. Docker
+## 10. Operação
 
-Comandos úteis:
+Subir:
 
-docker ps
-docker logs trello-dashboard-container --tail 100
-docker logs worklog-analytics-container --tail 100
-docker restart trello-dashboard-container
-docker restart worklog-analytics-container
+`docker compose up -d --build`
 
-Se o projeto usar Docker Compose:
+Logs:
 
-docker compose ps
-docker compose up -d
-docker compose down
+`docker logs --tail=160 trello-dashboard-container`
 
-Antes de usar docker compose, confirmar se existe compose.yaml ou docker-compose.yml no diretório.
+Testes:
 
-12. Processo Seguro de Alteração
+- `curl -I http://localhost:8001/login`
+- `curl -I http://localhost:8001/admin/audit`
+- `curl -I http://localhost:8001/daily`
+- `curl -I http://localhost:8001/registro-horas`
+- `curl -I http://localhost:8001/daily_history`
+- `curl -I http://localhost:8001/worklog_history`
 
-Antes de qualquer alteração:
+## 11. Backup
 
-cd ~/apps/trello-dashboard
-git status
+Projeto:
 
-Se for alterar arquivo importante:
+`tar -czvf trello-dashboard-stable-prod-$(date +%Y%m%d-%H%M).tar.gz trello-dashboard`
 
-cp caminho/do/arquivo caminho/do/arquivo.bak_$(date +%Y%m%d_%H%M%S)
+Worklog:
 
-Depois da alteração:
+`sqlite3 trello-dashboard/data/worklog.db ".backup worklog_backup_stable_$(date +%Y%m%d-%H%M).db"`
 
-docker restart trello-dashboard-container
-curl -I http://localhost:8001/
+## 12. Pendências recomendadas
 
-Se estiver funcionando:
+- proteger `/trello/update` para admin
+- impedir múltiplas execuções simultâneas
+- criar backup automático
+- remover estilos inline gradualmente
+- criar design system
+- tornar pipeline assíncrono
+- adicionar logs estruturados
 
-git status
-git add .
-git commit -m "documenta arquitetura e ajustes do sistema"
-13. Padrão de Trabalho no VS Code
-
-Sempre:
-
-Conferir se o arquivo existe
-Abrir e ler o conteúdo antes de alterar
-Fazer backup antes de mudanças relevantes
-Alterar com calma
-Reiniciar o container correto
-Testar localmente
-Testar pelo domínio
-Ver logs em caso de erro
-Fazer commit em ponto estável
-14. Pontos Críticos
-Rotas Flask/Dash precisam estar registradas corretamente
-Nginx pode mascarar erro de aplicação
-404 em localhost normalmente indica rota inexistente ou não registrada
-404 no domínio, mas não no localhost, normalmente indica problema de Nginx
-Mudanças no código geralmente exigem restart do container
-Cliente não pode acessar dados de outro cliente
-Rótulos do Trello não devem ser assumidos automaticamente como clientes
-15. Roadmap Técnico
-
-Itens previstos ou recomendados:
-
-Implementar autenticação por usuário
-Separar perfis: admin, interno e cliente
-Criar cadastro gráfico de clientes
-Gerar automaticamente portal, kanban e dashboard por cliente cadastrado
-Documentar todas as rotas
-Criar status report automático
-Melhorar visão semanal
-Criar documentação técnica de API
-Melhorar observabilidade com logs e health checks
-Padronizar deploy e rollback
-Criar pipeline de backup antes de alterações críticas
-16. Comandos de Diagnóstico Rápido
-cd ~/apps/trello-dashboard
-pwd
-ls -la
-git status
-docker ps
-docker logs trello-dashboard-container --tail 50
-curl -I http://localhost:8001/
-
-Para o worklog:
-
-cd ~/apps/worklog-analytics
-pwd
-ls -la
-docker logs worklog-analytics-container --tail 50
-curl -I http://localhost:8003/
-17. Observação Final
-
-Este documento deve ser mantido atualizado sempre que houver mudança relevante em:
-
-Rotas
-Containers
-Portas
-Domínio
-Nginx
-Fluxo de autenticação
-Regras de negócio
-Estrutura de pastas
-Processo de deploy
