@@ -199,57 +199,8 @@ code {
 }
 
 
-/* =========================
-   Dark background contrast fixes
-   ========================= */
-
-.card[style*="background:#0f172a"],
-.card[style*="background: #0f172a"],
-.card[style*="background:#111827"],
-.card[style*="background: #111827"],
-.card[style*="background:#1e3a8a"],
-.card[style*="background: #1e3a8a"],
-.card[style*="background:#1d4ed8"],
-.card[style*="background: #1d4ed8"],
-.card[style*="background:#2563eb"],
-.card[style*="background: #2563eb"],
-.card[style*="background:linear-gradient"],
-.card[style*="background: linear-gradient"] {
-    color: #ffffff !important;
-}
-
-.card[style*="background:#0f172a"] *,
-.card[style*="background: #0f172a"] *,
-.card[style*="background:#111827"] *,
-.card[style*="background: #111827"] *,
-.card[style*="background:#1e3a8a"] *,
-.card[style*="background: #1e3a8a"] *,
-.card[style*="background:#1d4ed8"] *,
-.card[style*="background: #1d4ed8"] *,
-.card[style*="background:#2563eb"] *,
-.card[style*="background: #2563eb"] *,
-.card[style*="background:linear-gradient"] *,
-.card[style*="background: linear-gradient"] * {
-    color: #ffffff !important;
-}
-
-.card[style*="background:#0f172a"] a,
-.card[style*="background:#111827"] a,
-.card[style*="background:#1e3a8a"] a,
-.card[style*="background:#1d4ed8"] a,
-.card[style*="background:#2563eb"] a {
-    color: #ffffff !important;
-}
-
 /* Badges/códigos dentro de cards escuros */
-.card[style*="background:#0f172a"] code,
-.card[style*="background:#111827"] code,
-.card[style*="background:#1e3a8a"] code,
-.card[style*="background:#1d4ed8"] code,
-.card[style*="background:#2563eb"] code {
-    background: rgba(255,255,255,0.16) !important;
-    color: #ffffff !important;
-}
+
 
 /* Títulos e labels em áreas administrativas */
 .admin-card-dark,
@@ -276,18 +227,7 @@ body.admin-page .content .card {
     color: #ffffff !important;
 }
 
-body.admin-page .content .card *,
-body.admin-page .content .card h1,
-body.admin-page .content .card h2,
-body.admin-page .content .card h3,
-body.admin-page .content .card p,
-body.admin-page .content .card div,
-body.admin-page .content .card span,
-body.admin-page .content .card label,
-body.admin-page .content .card td,
-body.admin-page .content .card strong {
-    color: #ffffff !important;
-}
+
 
 body.admin-page .content .card .muted,
 body.admin-page .content .card .subtitle,
@@ -355,50 +295,6 @@ body.admin-page .content .card input[type="checkbox"] {
 }
 
 /* =========================
-   NON-ADMIN LIGHT CARD FIX
-   ========================= */
-
-body:not(.admin-page) .content .card {
-    color: #111827 !important;
-}
-
-body:not(.admin-page) .content .card h1,
-body:not(.admin-page) .content .card h2,
-body:not(.admin-page) .content .card h3,
-body:not(.admin-page) .content .card p,
-body:not(.admin-page) .content .card div,
-body:not(.admin-page) .content .card span,
-body:not(.admin-page) .content .card label,
-body:not(.admin-page) .content .card td,
-body:not(.admin-page) .content .card th,
-body:not(.admin-page) .content .card strong {
-    color: #111827 !important;
-}
-
-body:not(.admin-page) .content .card .subtitle,
-body:not(.admin-page) .content .card .muted {
-    color: #667085 !important;
-}
-
-body:not(.admin-page) .content .card input,
-body:not(.admin-page) .content .card select,
-body:not(.admin-page) .content .card textarea {
-    color: #111827 !important;
-    background: #ffffff !important;
-}
-
-body:not(.admin-page) .content .card button,
-body:not(.admin-page) .content .card .btn,
-body:not(.admin-page) .content .card .btn-primary,
-body:not(.admin-page) .content .card .btn-secondary {
-    color: #ffffff !important;
-}
-
-body:not(.admin-page) .content .card a {
-    color: #1d4ed8 !important;
-}
-
-/* =========================
    FINAL ADMIN BUTTON FIX
    ========================= */
 
@@ -429,29 +325,6 @@ body.admin-page .content .card .btn:hover {
     filter: brightness(1.08);
 }
 
-
-/* =========================
-   WORKLOG / DAILY SECTION THEME
-   ========================= */
-
-body:not(.admin-page) .content .worklog-page {
-    max-width: 1080px;
-}
-
-body:not(.admin-page) .content .worklog-page .worklog-header {
-    background: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
-    color: #111827 !important;
-}
-
-body:not(.admin-page) .content .worklog-page .worklog-header * {
-    color: inherit !important;
-}
-
-body:not(.admin-page) .content .worklog-page .worklog-header p,
-body:not(.admin-page) .content .worklog-page .worklog-header .subtitle {
-    color: #667085 !important;
-}
 
 /* Demais cards viram seções escuras */
 body:not(.admin-page) .content .worklog-page .card:not(.worklog-header) {
@@ -586,4 +459,259 @@ body.admin-page .audit-filter-actions .audit-clear-button {
     background: #334155 !important;
     color: #ffffff !important;
     border: 1px solid #475569 !important;
+}
+
+
+/* =========================
+   TARGETED ADMIN CONTRAST
+   Only admin pages, only cards/client-cards.
+   ========================= */
+body.admin-page .content .card,
+body.admin-page .content .client-card {
+    background: #111827 !important;
+    border-color: #243044 !important;
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card h1,
+body.admin-page .content .card h2,
+body.admin-page .content .card h3,
+body.admin-page .content .card p,
+body.admin-page .content .card label,
+body.admin-page .content .card td,
+body.admin-page .content .card strong,
+body.admin-page .content .client-card h1,
+body.admin-page .content .client-card h2,
+body.admin-page .content .client-card h3,
+body.admin-page .content .client-card p,
+body.admin-page .content .client-card label,
+body.admin-page .content .client-card td,
+body.admin-page .content .client-card strong {
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card .muted,
+body.admin-page .content .card .subtitle,
+body.admin-page .content .client-card .muted,
+body.admin-page .content .client-card .subtitle {
+    color: #cbd5e1 !important;
+}
+
+body.admin-page .content .card .eyebrow,
+body.admin-page .content .client-card .eyebrow,
+body.admin-page .content .card th,
+body.admin-page .content .client-card th {
+    color: #facc15 !important;
+}
+
+body.admin-page .content .card input,
+body.admin-page .content .card select,
+body.admin-page .content .card textarea {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+body.admin-page .content .card option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card code,
+body.admin-page .content .client-card code {
+    background: rgba(255,255,255,.15) !important;
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card button,
+body.admin-page .content .card input[type="submit"],
+body.admin-page .content .card .btn,
+body.admin-page .content .card a.btn,
+body.admin-page .content .client-card .btn,
+body.admin-page .content .client-card a.btn {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: 1px solid #2563eb !important;
+}
+
+/* =========================
+   TARGETED WORKLOG CONTRAST
+   Non-admin worklog pages stay light.
+   ========================= */
+body:not(.admin-page) .content .worklog-page,
+body:not(.admin-page) .content .worklog-page .card,
+body:not(.admin-page) .content .worklog-page .worklog-card {
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .worklog-page .card {
+    background: #ffffff !important;
+}
+
+body:not(.admin-page) .content .worklog-page h1,
+body:not(.admin-page) .content .worklog-page h2,
+body:not(.admin-page) .content .worklog-page h3,
+body:not(.admin-page) .content .worklog-page label,
+body:not(.admin-page) .content .worklog-page td,
+body:not(.admin-page) .content .worklog-page th,
+body:not(.admin-page) .content .worklog-page strong {
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .worklog-page p,
+body:not(.admin-page) .content .worklog-page .muted,
+body:not(.admin-page) .content .worklog-page .subtitle {
+    color: #667085 !important;
+}
+
+body:not(.admin-page) .content .worklog-page input,
+body:not(.admin-page) .content .worklog-page select,
+body:not(.admin-page) .content .worklog-page textarea {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 1px solid #d0d5dd !important;
+}
+
+
+/* =========================================================
+   POST-MIGRATION UI FIX — contrast, admin/client pages, forms
+   Added safely after migration.
+   ========================================================= */
+
+/* Admin / Clientes / Auditoria: cards escuros precisam de texto claro */
+body.admin-page .content .card,
+body.admin-page .content .client-card,
+.content .admin-card-dark,
+.content .audit-card-dark {
+    background: #111827 !important;
+    border: 1px solid #243044 !important;
+    color: #f8fafc !important;
+}
+
+body.admin-page .content .card *,
+body.admin-page .content .client-card *,
+.content .admin-card-dark *,
+.content .audit-card-dark * {
+    color: #f8fafc !important;
+}
+
+body.admin-page .content .card p,
+body.admin-page .content .client-card p,
+body.admin-page .content .card small,
+body.admin-page .content .client-card small,
+body.admin-page .content .card .muted,
+body.admin-page .content .client-card .muted,
+.content .audit-card-dark .muted,
+.content .admin-card-dark .muted {
+    color: #cbd5e1 !important;
+}
+
+body.admin-page .content .card th,
+body.admin-page .content .client-card th,
+body.admin-page .content .card .eyebrow,
+body.admin-page .content .client-card .eyebrow,
+.content .audit-card-dark th,
+.content .admin-card-dark th {
+    color: #facc15 !important;
+    font-weight: 900 !important;
+}
+
+/* Tabelas de admin/auditoria */
+body.admin-page .content table td,
+body.admin-page .content table td *,
+body.admin-page .content table tr,
+.content .audit-card-dark table td,
+.content .audit-card-dark table td * {
+    color: #f8fafc !important;
+}
+
+body.admin-page .content table {
+    background: transparent !important;
+}
+
+body.admin-page .content table td,
+body.admin-page .content table th {
+    border-color: #243044 !important;
+}
+
+/* Inputs em cards escuros */
+body.admin-page .content .card input,
+body.admin-page .content .card select,
+body.admin-page .content .card textarea,
+body.admin-page .content .client-card input,
+body.admin-page .content .client-card select,
+body.admin-page .content .client-card textarea {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+body.admin-page .content .card input::placeholder,
+body.admin-page .content .card textarea::placeholder,
+body.admin-page .content .client-card input::placeholder,
+body.admin-page .content .client-card textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Botões dentro de forms: alinhamento consistente */
+.worklog-page form button,
+.worklog-page form .btn,
+.worklog-page form a.btn,
+.worklog-page form a[role="button"],
+body.admin-page form button,
+body.admin-page form .btn,
+body.admin-page form a.btn {
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+    line-height: 1 !important;
+    margin-top: 0 !important;
+}
+
+/* Worklog continua claro */
+body:not(.admin-page) .content .worklog-page,
+body:not(.admin-page) .content .worklog-page .card,
+body:not(.admin-page) .content .worklog-page .worklog-card {
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .worklog-page .card {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+body:not(.admin-page) .content .worklog-page h1,
+body:not(.admin-page) .content .worklog-page h2,
+body:not(.admin-page) .content .worklog-page h3,
+body:not(.admin-page) .content .worklog-page label,
+body:not(.admin-page) .content .worklog-page td,
+body:not(.admin-page) .content .worklog-page th,
+body:not(.admin-page) .content .worklog-page strong {
+    color: #111827 !important;
+}
+
+body:not(.admin-page) .content .worklog-page p,
+body:not(.admin-page) .content .worklog-page .muted,
+body:not(.admin-page) .content .worklog-page .subtitle {
+    color: #667085 !important;
+}
+
+body:not(.admin-page) .content .worklog-page input,
+body:not(.admin-page) .content .worklog-page select,
+body:not(.admin-page) .content .worklog-page textarea {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 1px solid #d0d5dd !important;
+}
+
+/* Corrige botões desalinhados em grids de filtro */
+.worklog-page form div[style*="align-items:start"],
+.worklog-page form div[style*="align-items:end"] {
+    align-items: end !important;
+}
+
+.worklog-page form a {
+    text-decoration: none !important;
 }

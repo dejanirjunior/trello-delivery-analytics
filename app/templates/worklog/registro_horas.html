@@ -9,7 +9,7 @@
 
     <div class="card" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; margin-bottom:16px;">
         <form method="GET" action="{{ url_for('worklog.index') }}">
-            <div style="display:grid; grid-template-columns: 170px 280px 120px; gap:12px; align-items:start;">
+            <div style="display:grid; grid-template-columns: 170px 280px 120px; gap:12px; align-items:end;">
                 <div>
                     <label style="display:block; font-weight:700; color:#344054; font-size:13px; margin-bottom:5px;">Data</label>
                     <input type="date" name="work_date" value="{{ today }}" style="width:100%;">
@@ -33,7 +33,7 @@
                     {% endif %}
                 </div>
 
-                <div style="display:flex; align-items:flex-end; height:100%;">
+                <div style="display:flex; align-items:flex-end; height:40px;">
                     <button type="submit" style="height:40px; background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:0 14px; font-size:13px; font-weight:800; line-height:40px; cursor:pointer;">
                         Carregar
                     </button>
@@ -104,7 +104,7 @@
                             </div>
                             {% endif %}
 
-                            <div class="worklog-fields" style="display:grid; grid-template-columns: 100px 170px 1fr; gap:10px; margin-top:10px; align-items:start;">
+                            <div class="worklog-fields" style="display:grid; grid-template-columns: 100px 170px 1fr; gap:10px; margin-top:10px; align-items:end;">
                                 <div>
                                     <label style="font-size:12px; color:#344054; font-weight:700;">Horas</label>
                                     <input type="number" name="hours__{{ card.card_id }}" min="0.25" step="0.25" placeholder="0" style="width:100%;">
@@ -152,7 +152,7 @@
                         </select>
                     </div>
 
-                    <button type="button" id="add-card-button" style="background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:10px 14px; position:relative; top:-8px; font-weight:800; cursor:pointer;">
+                    <button type="button" id="add-card-button" style="background:#2563eb; color:#ffffff; border:none; border-radius:10px; padding:10px 14px;  font-weight:800; cursor:pointer;">
                         Adicionar
                     </button>
                 </div>
@@ -254,7 +254,7 @@ document.getElementById("add-card-button")?.addEventListener("click", function()
 
                 ${hasBlock === "1" ? '<div style="font-size:12px;color:#b42318;font-weight:700;margin-top:5px;">🚫 BLOCK no Trello</div>' : ""}
 
-                <div class="worklog-fields" style="display:grid; grid-template-columns: 100px 170px 1fr; gap:10px; margin-top:10px; align-items:start;">
+                <div class="worklog-fields" style="display:grid; grid-template-columns: 100px 170px 1fr; gap:10px; margin-top:10px; align-items:end;">
                     <div>
                         <label style="font-size:12px;color:#344054;font-weight:700;">Horas</label>
                         <input type="number" name="hours__${cardId}" min="0.25" step="0.25" placeholder="0" style="width:100%;">

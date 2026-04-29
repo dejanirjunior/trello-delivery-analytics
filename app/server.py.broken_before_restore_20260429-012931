@@ -917,13 +917,15 @@ def admin_worklog_usuarios():
 
 @app.route("/")
 def home():
-    if not is_logged():
+    
+    message = "Bem-vindo ao sistema"
+if not is_logged():
         return redirect("/login")
 
     return base_layout("Clientes · Optaris", f"""
         <div class="card">
             <h2>Status</h2>
-            <p>{message}</p>
+            <p>{message if 'message' in locals() else 'Bem-vindo ao sistema'}</p>
             <a class="btn btn-secondary" href="/admin/clientes">Voltar</a>
         </div>
     """)
@@ -1065,7 +1067,7 @@ def update():
         return guard
 
     try:
-        main_script = str(BASE_DIR / "app" / "app/main.py")
+        main_script = str(BASE_DIR / "app" / "main.py")
 
         result = subprocess.run(
             ["python3", main_script],
@@ -1197,7 +1199,7 @@ def salvar_cliente():
     if has_data:
         try:
             subprocess.run(
-                ["python3", str(BASE_DIR / "app" / "app/main.py")],
+                ["python3", str(BASE_DIR / "app" / "main.py")],
                 capture_output=True,
                 text=True,
                 cwd=str(BASE_DIR)
@@ -2183,7 +2185,7 @@ def trello_update():
 
     try:
         result = subprocess.run(
-            ["python3", "app/main.py"],
+            ["python3", "main.py"],
             cwd="/app",
             capture_output=True,
             text=True,
@@ -2191,48 +2193,21 @@ def trello_update():
         )
 
         if result.returncode != 0:
-            stderr = result.stderr[-3000:] if result.stderr else ""
-            stdout = result.stdout[-3000:] if result.stdout else ""
-            msg = stderr or stdout or "Erro desconhecido ao executar pipeline."
-
             return jsonify({
                 "success": False,
-                "ok": False,
-                "status": "error",
-                "message": msg,
-                "error": msg,
-                "stdout": stdout,
-                "stderr": stderr
+                "message": "Erro ao atualizar dados.",
+                "stdout": result.stdout[-2000:],
+                "stderr": result.stderr[-2000:]
             }), 500
-
-        stdout = result.stdout[-3000:] if result.stdout else ""
 
         return jsonify({
             "success": True,
-            "ok": True,
-            "status": "success",
             "message": "Dados atualizados com sucesso.",
-            "error": None,
-            "stdout": stdout,
-            "stderr": ""
-        }), 200
-
-    except subprocess.TimeoutExpired:
-        msg = "Tempo limite excedido ao atualizar os dados. O processo demorou mais de 5 minutos."
-        return jsonify({
-            "success": False,
-            "ok": False,
-            "status": "error",
-            "message": msg,
-            "error": msg
-        }), 504
+            "stdout": result.stdout[-2000:]
+        })
 
     except Exception as e:
-        msg = str(e) or "Erro desconhecido."
         return jsonify({
             "success": False,
-            "ok": False,
-            "status": "error",
-            "message": msg,
-            "error": msg
+            "message": str(e)
         }), 500
