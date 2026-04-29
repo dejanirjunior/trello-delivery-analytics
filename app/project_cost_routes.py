@@ -126,6 +126,47 @@ def add_cost_role():
     return redirect("/admin/project-costs")
 
 
+
+
+@project_cost_bp.route("/admin/project-costs/edit-role", methods=["POST"])
+def edit_role():
+    guard = require_admin()
+    if guard:
+        return guard
+
+    role_id = request.form.get("role_id")
+    name = (request.form.get("name") or "").strip()
+    cost = request.form.get("cost")
+
+    if role_id and name and cost:
+        conn = get_db()
+        conn.execute(
+            "UPDATE cost_roles SET name = ?, monthly_cost = ? WHERE id = ?",
+            (name, float(cost), int(role_id))
+        )
+        conn.commit()
+        conn.close()
+
+    return redirect("/admin/project-costs")
+
+
+@project_cost_bp.route("/admin/project-costs/delete-role", methods=["POST"])
+def delete_role():
+    guard = require_admin()
+    if guard:
+        return guard
+
+    role_id = request.form.get("role_id")
+
+    if role_id:
+        conn = get_db()
+        conn.execute("DELETE FROM cost_roles WHERE id = ?", (int(role_id),))
+        conn.commit()
+        conn.close()
+
+    return redirect("/admin/project-costs")
+
+
 @project_cost_bp.route("/admin/project-costs/add-project", methods=["POST"])
 def add_project():
     guard = require_admin()
@@ -396,15 +437,32 @@ def project_costs_home():
 
     roles_rows = ""
     for role in roles:
+        role_id = int(role["id"])
+        role_name = escape(role["name"])
+        role_cost = role["monthly_cost"]
+
         roles_rows += f"""
             <tr>
-                <td>{escape(role["name"])}</td>
-                <td>{money(role["monthly_cost"])}</td>
+                <td>
+                    <form method="POST" action="/admin/project-costs/edit-role" style="display:grid; grid-template-columns: 1fr 150px 90px; gap:8px; align-items:center; margin:0;">
+                        <input type="hidden" name="role_id" value="{role_id}">
+                        <input name="name" value="{role_name}" required>
+                        <input name="cost" type="number" step="0.01" value="{role_cost}" required>
+                        <button type="submit">Salvar</button>
+                    </form>
+                </td>
+                <td>{money(role_cost)}</td>
+                <td>
+                    <form method="POST" action="/admin/project-costs/delete-role" style="margin:0;" onsubmit="return confirm('Excluir esta funcao? Isso pode afetar alocacoes existentes.');">
+                        <input type="hidden" name="role_id" value="{role_id}">
+                        <button type="submit" style="color:#ef4444;">Excluir</button>
+                    </form>
+                </td>
             </tr>
         """
 
     if not roles_rows:
-        roles_rows = '<tr><td colspan="2">Nenhuma funcao cadastrada.</td></tr>'
+        roles_rows = '<tr><td colspan="3">Nenhuma funcao cadastrada.</td></tr>'
 
     project_rows = ""
     dashboard_cards = ""
@@ -819,8 +877,9 @@ def project_costs_home():
             <table>
                 <thead>
                     <tr>
-                        <th>Funcao</th>
-                        <th>Custo mensal</th>
+                        <th>Editar funcao e custo</th>
+                        <th>Custo atual</th>
+                        <th>Acoes</th>
                     </tr>
                 </thead>
                 <tbody>{roles_rows}</tbody>
