@@ -1,0 +1,452 @@
+
+=== 1) Arquivos com body/base_layout/content/admin-page ===
+
+--- app/generate_client_portal.py ---
+38:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+111: <body>
+
+--- app/generate_executive_client_views.py ---
+306:         <div class="alert-content">
+316:         <div class="alert-content">
+326:         <div class="alert-content">
+336:         <div class="alert-content">
+370: <meta name="viewport" content="width=device-width, initial-scale=1.0">
+411:     content: '';
+431:     justify-content: space-between;
+477:     justify-content: center;
+531:     content: '';
+611:     content: '';
+624:     justify-content: center;
+708:     content: '';
+756:     justify-content: space-between;
+854:     justify-content: space-between;
+975:     justify-content: center;
+980:   .alert-content {{
+1046:     justify-content: space-between;
+1084: <body>
+
+--- app/generate_pm_forecast_view.py ---
+31:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+70:       justify-content: space-between;
+262: <body>
+
+--- app/generate_director_flow_view.py ---
+72:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+108:       justify-content: space-between;
+214: <body>
+
+--- app/server.py ---
+502: def base_layout(title, content):
+506:     body_class = "admin-page" if request.path.startswith("/admin") else ""
+564:                     <div class="sidebar-details-content">
+586:         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+718:         .sidebar-details-content {{
+748:         .content {{
+757:     <body class="{body_class}">
+778:             <main class="content">
+779:                 {content}
+790: app.config["BASE_LAYOUT_FUNC"] = base_layout
+888:     return base_layout("Vínculo Worklog · Optaris", f"""
+910:                 <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+923:     return base_layout("Clientes · Optaris", f"""
+953:     return base_layout("Login · Optaris", f"""
+1012:     return base_layout("Trocar senha · Optaris", f"""
+1135:     return base_layout("Clientes · Optaris", f"""
+1266:     return base_layout("Usuários · Optaris", f"""
+1392:     return base_layout("Editar usuário · Optaris", f"""
+1444:     return base_layout("Resetar senha", f"""
+1572:     return base_layout("Auditoria · Optaris", f"""
+1672:             justify-content: space-between;
+1688:             justify-content: center;
+1723:         r"<body([^>]*)>",
+1724:         r"<body\1>" + injected_menu,
+1767:     "base_layout": base_layout,
+1842:         return base_layout("Comparação Weekly · Optaris", f"""
+1871:     return base_layout("Comparação Weekly · Optaris", f"""
+2156:     return base_layout("Política de Privacidade · Optaris", '''
+
+--- app/generate_kanban_html.py ---
+58: <meta name="viewport" content="width=device-width, initial-scale=1.0">
+88:     justify-content: space-between;
+175:     justify-content: space-between;
+269:     justify-content: center;
+311: <body>
+367:     <div id="modal-content"></div>
+455:   document.getElementById('modal-content').innerHTML = `
+
+--- app/weekly_routes.py ---
+21:     base_layout = deps["base_layout"]
+102:                 justify-content:space-between;
+406:         return base_layout("Weekly · Optaris", f"""
+511:         return base_layout("Criar Weekly · Optaris", f"""
+597:         return base_layout("Cena da Weekly · Optaris", f"""
+
+--- app/generate_client_portals.py ---
+96: <body>
+
+--- app/generate_pm_forecast_demo_view.py ---
+23: <meta name="viewport" content="width=device-width, initial-scale=1.0">
+89: <body>
+
+--- app/generate_dashboard.py ---
+77: <meta name="viewport" content="width=device-width, initial-scale=1.0">
+115:   content:'';
+134:   justify-content:space-between;
+176:   justify-content:center;
+313:   justify-content:space-between;
+335: <body>
+
+--- app/generate_pm_flow_view.py ---
+70:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+105:       justify-content: space-between;
+211: <body>
+
+--- app/generate_pm_view.py ---
+68:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+87:       justify-content:space-between;
+102:       justify-content:center;
+244: <body>
+
+--- app/worklog_routes.py ---
+84:     base_layout = current_app.config.get("BASE_LAYOUT_FUNC")
+85:     if base_layout:
+86:         return base_layout(title, html)
+
+--- app/generate_director_view.py ---
+65:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+101:       justify-content: space-between;
+320: <body>
+
+=== 2) Rotas de Clientes/Auditoria ===
+
+--- app/generate_client_portal.py ---
+29:     clientes = sorted(df["cliente"].dropna().unique())
+31:     for cliente in clientes:
+
+--- app/migrate_db.py ---
+
+--- app/executive_metrics.py ---
+
+--- app/worklog_reader.py ---
+
+--- app/generate_executive_client_views.py ---
+362:     executive_url = f"/clientes/{slug}"
+363:     dashboard_url = f"/clientes/{slug}/dashboard"
+
+--- app/forecast_montecarlo.py ---
+
+--- app/trello_api.py ---
+
+--- app/kanban_dataset.py ---
+
+--- app/forecast_dataset.py ---
+
+--- app/generate_pm_forecast_view.py ---
+
+--- app/client_config.py ---
+
+--- app/server.py ---
+393: def audit_log(action, target_type=None, target_value=None):
+402:     INSERT INTO audit_logs (username, action, target_type, target_value, ip_address)
+467:             ("Clientes", "/admin/clientes"),
+470:             ("Auditoria", "/admin/audit"),
+542:     def reports_clientes_section(clients):
+563:                     <summary>Reports Clientes</summary>
+574:     nav_html += reports_clientes_section(groups["clients"])
+815: @app.route("/admin/worklog-usuarios", methods=["GET", "POST"])
+918: @app.route("/")
+923:     return base_layout("Clientes · Optaris", f"""
+927:             <a class="btn btn-secondary" href="/admin/clientes">Voltar</a>
+932: @app.route("/login", methods=["GET", "POST"])
+944:             audit_log("login_success", "user", username)
+949:             return redirect("/admin/clientes")
+970:             <p>Entre para acessar dashboards, portais de clientes e gestão administrativa.</p>
+988: @app.route("/trocar-senha", methods=["GET", "POST"])
+1010:             return redirect("/admin/clientes")
+1038: @app.route("/logout")
+1040:     audit_log("logout", "user", session.get("user", "unknown"))
+1053: @app.route("/health")
+1061: @app.route("/update", methods=["POST"])
+1093: @app.route("/admin")
+1094: @app.route("/admin/")
+1100:     return redirect("/admin/clientes")
+1103: @app.route("/admin/clientes", methods=["GET"])
+1104: def admin_clientes():
+1116:         <div class="client-card">
+1132:         <a class="btn btn-secondary" href="/admin/audit">Auditoria</a>
+1135:     return base_layout("Clientes · Optaris", f"""
+1139:                 <h1>Clientes</h1>
+1140:                 <p>Gerencie clientes cadastrados e acesse as views disponíveis.</p>
+1147:             <form method="POST" action="/admin/clientes">
+1164: @app.route("/admin/clientes", methods=["POST"])
+1219:     return redirect("/admin/clientes")
+1222: @app.route("/admin/usuarios", methods=["GET"])
+1271:                 <p>Cadastre logins internos e logins de clientes com acesso multi-cliente.</p>
+1293:                 <label>Clientes permitidos</label>
+1310:                         <th>Clientes</th>
+1323: @app.route("/admin/usuarios", methods=["POST"])
+1345:         audit_log("user_created", "user", username)
+1352: @app.route("/admin/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
+1374:         audit_log("user_updated", "user", user["username"])
+1415: @app.route("/admin/usuarios/<int:user_id>/resetar-senha", methods=["GET", "POST"])
+1441:             audit_log("password_reset", "user", user["username"])
+1460: @app.route("/admin/usuarios/<int:user_id>/toggle", methods=["POST"])
+1483:     audit_log(action, "user", user["username"])
+1488: @app.route("/admin/audit", methods=["GET"])
+1489: def admin_audit():
+1514:     FROM audit_logs
+1538:     FROM audit_logs
+1572:     return base_layout("Auditoria · Optaris", f"""
+1576:                 <h1>Auditoria</h1>
+1585:             <form method="GET" action="/admin/audit">
+1597:                 <div class="audit-filter-actions">
+1598:                     <button type="submit" class="audit-filter-button">Filtrar</button>
+1599:                     <a class="audit-clear-button" href="/admin/audit">Limpar</a>
+1736: @app.route("/views/<path:filename>")
+1757:     audit_log("view_accessed", "file", filename)
+1780: @app.route("/weekly/compare/<int:weekly_id>")
+1912: @app.route("/weekly/pdf/<int:weekly_id>")
+2154: @app.route("/politica-privacidade")
+2179: @app.route("/trello/update", methods=["POST", "GET"])
+
+--- app/generate_kanban_html.py ---
+505:     clientes = sorted(df["cliente"].dropna().unique())
+507:     if not clientes:
+511:     for cliente in clientes:
+
+--- app/main.py ---
+83:         "14. Gerando portais dos clientes",
+
+--- app/weekly_routes.py ---
+366:     @app.route("/weekly/<slug>")
+421:     @app.route("/weekly/create/<slug>", methods=["GET", "POST"])
+549:     @app.route("/weekly/view/<int:weekly_id>")
+
+--- app/generate_client_portals.py ---
+104:         <a class="card" href="/clientes/{slug}/kanban">
+109:         <a class="card" href="/clientes/{slug}/dashboard">
+
+--- app/weekly_service.py ---
+
+--- app/generate_demo.py ---
+13: clientes = ["Coca-Cola", "MSD", "Ambev", "Nestlé"]
+30:         "cliente": random.choice(clientes),
+
+--- app/generate_dashboard.py ---
+345:       <a href="/clientes/{slug}" class="nav-btn">📊 Executivo</a>
+346:       <a href="/clientes/{slug}/dashboard" class="nav-btn active">📈 Dashboard</a>
+
+--- app/generate_forecast_demo.py ---
+17: CLIENTES = ["4Network", "Consigaz", "Realflex"]
+73:     cliente = random.choice(CLIENTES)
+120:     cliente = random.choice(CLIENTES)
+
+--- app/generate_pm_flow_view.py ---
+
+--- app/generate_pm_view.py ---
+59:     clientes = sorted({r["cliente"] for r in records if r["cliente"]})
+62:     clientes_json = json.dumps(clientes, ensure_ascii=False)
+360:     const CLIENTES = {clientes_json};
+367:     CLIENTES.forEach(cliente => {{
+
+--- app/worklog_routes.py ---
+
+--- app/generate_director_view.py ---
+56:     clientes = sorted({r["cliente"] for r in records if r["cliente"]})
+59:     clientes_json = json.dumps(clientes, ensure_ascii=False)
+425:     const CLIENTES = {clientes_json};
+510:     CLIENTES.forEach(cliente => {{
+
+=== 3) CSS carregado no HTML ===
+
+--- app/server.py ---
+588:         <link rel="stylesheet" href="/static/style.css">
+763:                         <img src="/static/logo.png" alt="Optaris">
+964:         <img src="/static/logo.png" alt="Optaris" style="max-width:180px;height:auto;">
+1964:             logo = Image("/app/app/static/logo.png")
+
+=== 4) Inline color escuro em páginas administrativas ===
+
+--- app/generate_pm_forecast_view.py ---
+178:       color: #111827;
+
+--- app/generate_director_flow_view.py ---
+178:       color: #111827;
+
+--- app/server.py ---
+595:             color: #111827;
+1799:             html += '<span style="background:#f59e0b;color:#111827;padding:4px 8px;border-radius:999px;font-weight:800;">Risco alto</span> '
+
+--- app/weekly_routes.py ---
+234:             badges += '<span class="weekly-pill warning" style="background:#f59e0b!important;color:#111827!important;border:1px solid #fbbf24!important;">Risco alto</span> '
+
+--- app/generate_dashboard.py ---
+190:   color:#0b0f1a;
+
+--- app/generate_pm_flow_view.py ---
+175:       color: #111827;
+
+--- app/generate_director_view.py ---
+223:       color: #111827;
+
+=== 5) Últimos patches no CSS ===
+654: }
+655: 
+656: /* Botões dentro de forms: alinhamento consistente */
+657: .worklog-page form button,
+658: .worklog-page form .btn,
+659: .worklog-page form a.btn,
+660: .worklog-page form a[role="button"],
+661: body.admin-page form button,
+662: body.admin-page form .btn,
+663: body.admin-page form a.btn {
+664:     min-height: 40px !important;
+665:     display: inline-flex !important;
+666:     align-items: center !important;
+667:     justify-content: center !important;
+668:     vertical-align: middle !important;
+669:     line-height: 1 !important;
+670:     margin-top: 0 !important;
+671: }
+672: 
+673: /* Worklog continua claro */
+674: body:not(.admin-page) .content .worklog-page,
+675: body:not(.admin-page) .content .worklog-page .card,
+676: body:not(.admin-page) .content .worklog-page .worklog-card {
+677:     color: #111827 !important;
+678: }
+679: 
+680: body:not(.admin-page) .content .worklog-page .card {
+681:     background: #ffffff !important;
+682:     border-color: #e5e7eb !important;
+683: }
+684: 
+685: body:not(.admin-page) .content .worklog-page h1,
+686: body:not(.admin-page) .content .worklog-page h2,
+687: body:not(.admin-page) .content .worklog-page h3,
+688: body:not(.admin-page) .content .worklog-page label,
+689: body:not(.admin-page) .content .worklog-page td,
+690: body:not(.admin-page) .content .worklog-page th,
+691: body:not(.admin-page) .content .worklog-page strong {
+692:     color: #111827 !important;
+693: }
+694: 
+695: body:not(.admin-page) .content .worklog-page p,
+696: body:not(.admin-page) .content .worklog-page .muted,
+697: body:not(.admin-page) .content .worklog-page .subtitle {
+698:     color: #667085 !important;
+699: }
+700: 
+701: body:not(.admin-page) .content .worklog-page input,
+702: body:not(.admin-page) .content .worklog-page select,
+703: body:not(.admin-page) .content .worklog-page textarea {
+704:     background: #ffffff !important;
+705:     color: #111827 !important;
+706:     border: 1px solid #d0d5dd !important;
+707: }
+708: 
+709: /* Corrige botões desalinhados em grids de filtro */
+710: .worklog-page form div[style*="align-items:start"],
+711: .worklog-page form div[style*="align-items:end"] {
+712:     align-items: end !important;
+713: }
+714: 
+715: .worklog-page form a {
+716:     text-decoration: none !important;
+717: }
+718: 
+719: 
+720: /* === OPTARIS FINAL ADMIN CONTRAST FIX === */
+721: /* Corrige textos invisíveis em cards escuros de Admin, Clientes e Auditoria */
+722: 
+723: body.admin-page .content .card,
+724: body.admin-page .content .client-card {
+725:     background: #111827 !important;
+726:     border-color: #243044 !important;
+727:     color: #f8fafc !important;
+728: }
+729: 
+730: body.admin-page .content .card h1,
+731: body.admin-page .content .card h2,
+732: body.admin-page .content .card h3,
+733: body.admin-page .content .card h4,
+734: body.admin-page .content .card p,
+735: body.admin-page .content .card span,
+736: body.admin-page .content .card div,
+737: body.admin-page .content .card label,
+738: body.admin-page .content .card strong,
+739: body.admin-page .content .card small,
+740: body.admin-page .content .card td,
+741: body.admin-page .content .card li,
+742: body.admin-page .content .client-card h1,
+743: body.admin-page .content .client-card h2,
+744: body.admin-page .content .client-card h3,
+745: body.admin-page .content .client-card h4,
+746: body.admin-page .content .client-card p,
+747: body.admin-page .content .client-card span,
+748: body.admin-page .content .client-card div,
+749: body.admin-page .content .client-card label,
+750: body.admin-page .content .client-card strong,
+751: body.admin-page .content .client-card small,
+752: body.admin-page .content .client-card td,
+753: body.admin-page .content .client-card li {
+754:     color: #f8fafc !important;
+755: }
+756: 
+757: body.admin-page .content .card .muted,
+758: body.admin-page .content .card .subtitle,
+759: body.admin-page .content .client-card .muted,
+760: body.admin-page .content .client-card .subtitle {
+761:     color: #cbd5e1 !important;
+762: }
+763: 
+764: body.admin-page .content .card th,
+765: body.admin-page .content .client-card th,
+766: body.admin-page .content .card .eyebrow,
+767: body.admin-page .content .client-card .eyebrow {
+768:     color: #facc15 !important;
+769:     font-weight: 900 !important;
+770: }
+771: 
+772: body.admin-page .content .card table,
+773: body.admin-page .content .client-card table {
+774:     background: transparent !important;
+775:     color: #f8fafc !important;
+776: }
+777: 
+778: body.admin-page .content .card table td,
+779: body.admin-page .content .card table th,
+780: body.admin-page .content .client-card table td,
+781: body.admin-page .content .client-card table th {
+782:     border-color: #243044 !important;
+783: }
+784: 
+785: body.admin-page .content .card input,
+786: body.admin-page .content .card select,
+787: body.admin-page .content .card textarea,
+788: body.admin-page .content .client-card input,
+789: body.admin-page .content .client-card select,
+790: body.admin-page .content .client-card textarea {
+791:     background: #1e293b !important;
+792:     color: #ffffff !important;
+793:     border: 1px solid #334155 !important;
+794: }
+795: 
+796: body.admin-page .content .card input::placeholder,
+797: body.admin-page .content .card textarea::placeholder,
+798: body.admin-page .content .client-card input::placeholder,
+799: body.admin-page .content .client-card textarea::placeholder {
+800:     color: #94a3b8 !important;
+801: }
+802: 
+803: body.admin-page .content .card option,
+804: body.admin-page .content .client-card option {
+805:     background: #1e293b !important;
+806:     color: #ffffff !important;
+807: }
+808: 
+809: body.admin-page .content .card a:not(.btn),
+810: body.admin-page .content .client-card a:not(.btn) {
+811:     color: #93c5fd !important;
+812: }
+813: 

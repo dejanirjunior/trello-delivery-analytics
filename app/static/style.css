@@ -715,3 +715,322 @@ body:not(.admin-page) .content .worklog-page textarea {
 .worklog-page form a {
     text-decoration: none !important;
 }
+
+
+/* === OPTARIS FINAL ADMIN CONTRAST FIX === */
+/* Corrige textos invisíveis em cards escuros de Admin, Clientes e Auditoria */
+
+body.admin-page .content .card,
+body.admin-page .content .client-card {
+    background: #111827 !important;
+    border-color: #243044 !important;
+    color: #f8fafc !important;
+}
+
+body.admin-page .content .card h1,
+body.admin-page .content .card h2,
+body.admin-page .content .card h3,
+body.admin-page .content .card h4,
+body.admin-page .content .card p,
+body.admin-page .content .card span,
+body.admin-page .content .card div,
+body.admin-page .content .card label,
+body.admin-page .content .card strong,
+body.admin-page .content .card small,
+body.admin-page .content .card td,
+body.admin-page .content .card li,
+body.admin-page .content .client-card h1,
+body.admin-page .content .client-card h2,
+body.admin-page .content .client-card h3,
+body.admin-page .content .client-card h4,
+body.admin-page .content .client-card p,
+body.admin-page .content .client-card span,
+body.admin-page .content .client-card div,
+body.admin-page .content .client-card label,
+body.admin-page .content .client-card strong,
+body.admin-page .content .client-card small,
+body.admin-page .content .client-card td,
+body.admin-page .content .client-card li {
+    color: #f8fafc !important;
+}
+
+body.admin-page .content .card .muted,
+body.admin-page .content .card .subtitle,
+body.admin-page .content .client-card .muted,
+body.admin-page .content .client-card .subtitle {
+    color: #cbd5e1 !important;
+}
+
+body.admin-page .content .card th,
+body.admin-page .content .client-card th,
+body.admin-page .content .card .eyebrow,
+body.admin-page .content .client-card .eyebrow {
+    color: #facc15 !important;
+    font-weight: 900 !important;
+}
+
+body.admin-page .content .card table,
+body.admin-page .content .client-card table {
+    background: transparent !important;
+    color: #f8fafc !important;
+}
+
+body.admin-page .content .card table td,
+body.admin-page .content .card table th,
+body.admin-page .content .client-card table td,
+body.admin-page .content .client-card table th {
+    border-color: #243044 !important;
+}
+
+body.admin-page .content .card input,
+body.admin-page .content .card select,
+body.admin-page .content .card textarea,
+body.admin-page .content .client-card input,
+body.admin-page .content .client-card select,
+body.admin-page .content .client-card textarea {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+body.admin-page .content .card input::placeholder,
+body.admin-page .content .card textarea::placeholder,
+body.admin-page .content .client-card input::placeholder,
+body.admin-page .content .client-card textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+body.admin-page .content .card option,
+body.admin-page .content .client-card option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+body.admin-page .content .card a:not(.btn),
+body.admin-page .content .client-card a:not(.btn) {
+    color: #93c5fd !important;
+}
+
+
+
+
+/* === OPTARIS WORKLOG ALIGNMENT FIX === */
+
+/* Corrige grids dos filtros */
+.worklog-page form div[style*="grid-template-columns"] {
+    align-items: end !important;
+}
+
+/* Padroniza altura de inputs/select */
+.worklog-page input,
+.worklog-page select {
+    height: 40px !important;
+    box-sizing: border-box;
+}
+
+/* Remove desalinhamento de containers flex */
+.worklog-page form div[style*="display:flex"] {
+    align-items: end !important;
+}
+
+/* Corrige botões */
+.worklog-page button,
+.worklog-page a[role="button"],
+.worklog-page form a {
+    height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: normal !important;
+    padding: 0 14px !important;
+}
+
+/* Remove hacks antigos */
+.worklog-page button[style*="line-height"] {
+    line-height: normal !important;
+}
+
+/* Corrige grid interno dos cards */
+.worklog-fields {
+    align-items: end !important;
+}
+
+
+
+
+/* === OPTARIS FORM CONTROLS STANDARD === */
+
+/* PADRÃO GLOBAL */
+input,
+select,
+button {
+    height: 42px;
+    box-sizing: border-box;
+}
+
+/* BOTÕES */
+button,
+.btn,
+a.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    font-weight: 700;
+    line-height: normal;
+}
+
+/* INPUTS */
+input,
+select {
+    padding: 0 12px;
+}
+
+/* GRID DE FILTROS */
+.card form > div[style*="grid"],
+.card > div[style*="grid"] {
+    align-items: end !important;
+}
+
+/* FLEX DE BOTÕES */
+div[style*="display:flex"] {
+    align-items: end !important;
+}
+
+
+
+
+/* === OPTARIS FINAL ALIGN FIX === */
+
+/* FORÇA PADRÃO REAL */
+input,
+select,
+button,
+a[style*="background"] {
+    height: 40px !important;
+    box-sizing: border-box !important;
+}
+
+/* BOTÕES (TODOS IGUAIS) */
+button,
+a[style*="background"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 14px !important;
+    line-height: normal !important;
+}
+
+/* INPUTS */
+input,
+select {
+    padding: 0 10px !important;
+}
+
+/* GRID CORRETO */
+div[style*="grid-template-columns"] {
+    align-items: end !important;
+}
+
+/* FLEX CORRETO */
+div[style*="display:flex"] {
+    align-items: end !important;
+}
+
+/* REMOVE DIFERENÇAS ENTRE <a> E <button> */
+a[style*="background"] {
+    text-decoration: none !important;
+}
+
+/* GARANTE ALINHAMENTO EM TODOS OS FILTROS */
+form div {
+    align-items: end !important;
+}
+
+
+
+/* === FILTER GRID SYSTEM === */
+
+.filter-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.filter-grid input,
+.filter-grid select {
+    height: 40px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 8px;
+    align-items: end;
+}
+
+.filter-actions button,
+.filter-actions a {
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+
+
+/* === OPTARIS DAILY HISTORY INPUT TEXT FIX === */
+.worklog-page select,
+.worklog-page input[type="date"] {
+    color: #ffffff !important;
+}
+
+.worklog-page select option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+.worklog-page input[type="date"]::-webkit-datetime-edit,
+.worklog-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.worklog-page input[type="date"]::-webkit-datetime-edit-text,
+.worklog-page input[type="date"]::-webkit-datetime-edit-month-field,
+.worklog-page input[type="date"]::-webkit-datetime-edit-day-field,
+.worklog-page input[type="date"]::-webkit-datetime-edit-year-field {
+    color: #ffffff !important;
+}
+
+.worklog-page input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+
+
+
+/* === OPTARIS FORCE DARK INPUTS === */
+
+/* força modo dark nativo do browser */
+.worklog-page input[type="date"],
+.worklog-page select {
+    color-scheme: dark;
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid #334155 !important;
+}
+
+/* texto interno do date */
+.worklog-page input[type="date"]::-webkit-datetime-edit {
+    color: #ffffff !important;
+}
+
+/* ícone do calendário */
+.worklog-page input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+/* select dropdown */
+.worklog-page select option {
+    background: #1e293b;
+    color: #ffffff;
+}
+
