@@ -113,6 +113,7 @@ def normalize_status(lista, labels):
     mapping = {
         "backlog": "To Do",
         "refinado": "To Do",
+        "business analysis": "To Do",
 
         "em dev": "Doing",
         "q.a.": "Doing",

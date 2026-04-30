@@ -482,6 +482,7 @@ def get_nav_groups():
     if role == "admin":
         internal_report_items = [
             ("PM View", "/views/pm_view.html"),
+            ("Director View", "/views/director_view.html"),
             ("Forecast", "/views/pm_forecast_view.html"),
         ]
 
@@ -1710,7 +1711,7 @@ def render_html_file_with_app_nav(filename):
     file_path = DATA_DIR / filename
 
     if not file_path.exists():
-        return send_from_directory(DATA_DIR, filename)
+        return view_missing_client_message(filename)
 
     html = file_path.read_text(encoding="utf-8")
 
@@ -1816,6 +1817,75 @@ def render_html_file_with_app_nav(filename):
     return html
 
 
+
+
+def view_missing_client_message(filename):
+    title = "View ainda não disponível"
+
+    clean_filename = filename.replace(".html", "")
+    view_type = "relatório"
+    client_slug = clean_filename
+
+    for prefix in ["executive_", "dashboard_", "kanban_", "portal_"]:
+        if clean_filename.startswith(prefix):
+            view_type = prefix.replace("_", "").capitalize()
+            client_slug = clean_filename.replace(prefix, "", 1)
+            break
+
+    return base_layout(title, f"""
+        <div class="card">
+            <div class="eyebrow">Relatório não gerado</div>
+            <h1>View ainda não disponível</h1>
+            <p>
+                O arquivo <code>{filename}</code> ainda não foi gerado para este cliente.
+            </p>
+
+            <div style="background:#0f172a; border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:16px; margin-top:18px;">
+                <h2 style="color:#ffffff; margin-top:0;">O que precisa acontecer?</h2>
+                <p style="color:#cbd5e1;">
+                    Para que as views Executivo e Dashboard sejam geradas, o cliente precisa ter:
+                </p>
+                <ul style="color:#cbd5e1; line-height:1.7;">
+                    <li>um rótulo no Trello com o mesmo slug/nome cadastrado no sistema: <code>{client_slug}</code>;</li>
+                    <li>cards associados a esse rótulo;</li>
+                    <li>cards em fluxo a partir da coluna <strong>Backlog</strong> ou etapas seguintes.</li>
+                </ul>
+                <p style="color:#cbd5e1;">
+                    Depois disso, execute a atualização dos dados do Trello para gerar os relatórios.
+                </p>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;">
+                <a class="btn btn-secondary" href="/admin/clientes">Voltar para Clientes</a>
+                <button type="button" onclick="updateTrelloData()">Atualizar dados do Trello</button>
+                <span id="trello-update-status" style="color:#cbd5e1; font-size:13px;"></span>
+
+                <script>
+                function updateTrelloData() {{
+                    const status = document.getElementById("trello-update-status");
+                    status.textContent = "Atualizando dados...";
+
+                    fetch("/trello/update", {{ method: "POST" }})
+                        .then(function(response) {{
+                            return response.json();
+                        }})
+                        .then(function(data) {{
+                            if (data.success || data.status === "success" || data.ok) {{
+                                status.textContent = "Atualização concluída. Recarregue a página em alguns segundos.";
+                            }} else {{
+                                status.textContent = "Falha ao atualizar. Verifique os logs.";
+                            }}
+                        }})
+                        .catch(function() {{
+                            status.textContent = "Erro ao executar atualização.";
+                        }});
+                }}
+                </script>
+            </div>
+        </div>
+    """), 404
+
+
 @app.route("/views/<path:filename>")
 def views(filename):
     admin_only_files = {
@@ -1838,6 +1908,11 @@ def views(filename):
             return "Acesso negado", 403
 
     audit_log("view_accessed", "file", filename)
+
+    file_path = DATA_DIR / filename
+
+    if not file_path.exists():
+        return view_missing_client_message(filename)
 
     if filename in admin_only_files:
         return render_html_file_with_app_nav(filename)
