@@ -587,6 +587,9 @@ def base_layout(title, content):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{title}</title>
+        <link rel="icon" href="/static/favicon.ico">
+        <link rel="shortcut icon" href="/static/favicon.ico">
+        <link rel="apple-touch-icon" href="/static/favicon-32.png">
         <link rel="stylesheet" href="/static/style.css">
 
         <style>

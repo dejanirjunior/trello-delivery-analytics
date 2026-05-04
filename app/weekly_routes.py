@@ -153,6 +153,30 @@ def register_weekly_routes(app, deps):
                 font-weight:800;
             }
 
+            
+            /* FIX: contraste da tela de visualizacao da Weekly */
+            .card p,
+            .card h3,
+            .weekly-muted,
+            .weekly-comment,
+            .weekly-comment strong,
+            .weekly-card,
+            .weekly-card p,
+            .weekly-card div {
+                color:#cbd5e1 !important;
+            }
+
+            .weekly-card-title,
+            .weekly-card h3,
+            .weekly-status-heading {
+                color:#f8fafc !important;
+                font-weight:800;
+            }
+
+            .weekly-pill {
+                color:#f8fafc !important;
+            }
+
             .weekly-card-title {
                 color:#f8fafc;
                 font-weight:600;
