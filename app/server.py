@@ -851,8 +851,8 @@ def base_layout(title, content):
                         <img src="/static/logo.png" alt="Optaris">
                     </div>
                     <div>
-                        <div class="sidebar-title">Optaris</div>
-                        <div class="sidebar-subtitle">Delivery Platform</div>
+                        <div class="sidebar-title">Project Command Center</div>
+                        <div class="sidebar-subtitle">Optaris Brasil</div>
                     </div>
                 </div>
 

@@ -107,6 +107,8 @@ def register_weekly_routes(app, deps):
 
             .weekly-section-title h2 {
                 margin:0;
+                color:#f8fafc !important;
+                font-weight:800;
             }
 
             .weekly-card {
@@ -127,10 +129,33 @@ def register_weekly_routes(app, deps):
                 background:rgba(250,176,5,0.07);
             }
 
+            
+            
+            .critical-form-card h2,
+            .card .weekly-section-title h2 {
+                color:#f8fafc !important;
+                font-weight:800;
+            }
+
+            .critical-form-card h3 {
+                color:#f8fafc !important;
+                font-weight:600;
+            }
+
+            .critical-form-card p {
+                color:#cbd5e1 !important;
+            }
+
+            
+            /* FIX FINAL: títulos da tela Nova Weekly */
+            .card h2 {
+                color:#f8fafc !important;
+                font-weight:800;
+            }
+
             .weekly-card-title {
-                font-weight:900;
-                font-size:16px;
-                margin-bottom:10px;
+                color:#f8fafc;
+                font-weight:600;
             }
 
             .weekly-card-meta {
